@@ -6,6 +6,14 @@ import { CodeExecutionService } from "../services/CodeExecutionService";
 import { languages } from "../constants/languages";
 import "../styles/editor.css";
 
+// Import Prettier for code formatting
+import * as prettier from "prettier";
+import prettierPluginBabel from "prettier/plugins/babel";
+import prettierPluginEstree from "prettier/plugins/estree";
+import prettierPluginTypescript from "prettier/plugins/typescript";
+import prettierPluginHtml from "prettier/plugins/html";
+import prettierPluginCss from "prettier/plugins/postcss";
+
 // Dynamically import Monaco Editor to prevent SSR issues
 const MonacoEditor = dynamic(() => import("react-monaco-editor"), {
   ssr: false,
@@ -17,6 +25,35 @@ const MonacoEditor = dynamic(() => import("react-monaco-editor"), {
     </div>
   ),
 });
+
+// Dynamically import WebEditor to prevent SSR issues
+const WebEditor = dynamic(() => import("./WebEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-[500px] bg-gray-100 dark:bg-gray-800 rounded-lg border">
+      <div className="text-gray-500 dark:text-gray-400">
+        Loading Web Editor...
+      </div>
+    </div>
+  ),
+});
+
+// Configure Monaco Editor for better syntax highlighting
+const configureMonaco = () => {
+  if (typeof window !== "undefined" && (window as any).monaco) {
+    // Set up additional language features
+    const monaco = (window as any).monaco;
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.ES2020,
+      allowNonTsExtensions: true,
+    });
+
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.ES2020,
+      allowNonTsExtensions: true,
+    });
+  }
+};
 
 interface CodeEditorProps {
   code: string;
@@ -225,46 +262,6 @@ void greet(const char* name) {
     printf("Hello, %s!\\n", name);
 }`,
 
-  csharp: `// C# Example
-using System;
-using System.Collections.Generic;
-
-namespace HelloWorld
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine("Hello, World!");
-            
-            // Variables
-            int number = 42;
-            string message = "C# Programming";
-            
-            Console.WriteLine($"Number: {number}");
-            Console.WriteLine($"Message: {message}");
-            
-            // List
-            List<int> numbers = new List<int> {1, 2, 3, 4, 5};
-            Console.Write("Numbers: ");
-            foreach (int num in numbers)
-            {
-                Console.Write($"{num} ");
-            }
-            Console.WriteLine();
-            
-            // Method call
-            string greeting = Greet("C# Developer");
-            Console.WriteLine(greeting);
-        }
-        
-        static string Greet(string name)
-        {
-            return $"Hello, {name}!";
-        }
-    }
-}`,
-
   php: `<?php
 // PHP Example
 echo "Hello, World!\\n";
@@ -302,53 +299,6 @@ for ($i = 1; $i <= 5; $i++) {
 }
 echo "\\n";
 ?>`,
-
-  ruby: `# Ruby Example
-puts "Hello, World!"
-
-# Variables
-number = 42
-message = "Ruby Programming"
-
-puts "Number: #{number}"
-puts "Message: #{message}"
-
-# Array
-numbers = [1, 2, 3, 4, 5]
-puts "Numbers: #{numbers.join(' ')}"
-
-# Hash
-person = {
-  name: "John",
-  age: 30,
-  city: "New York"
-}
-puts "Person: #{person}"
-
-# Method
-def greet(name)
-  "Hello, #{name}!"
-end
-
-puts greet("Ruby Developer")
-
-# Block iteration
-puts "Squares:"
-(1..5).each { |i| puts "#{i}^2 = #{i**2}" }
-
-# Class
-class Greeter
-  def initialize(name)
-    @name = name
-  end
-  
-  def say_hello
-    "Hello, #{@name}!"
-  end
-end
-
-greeter = Greeter.new("Ruby")
-puts greeter.say_hello`,
 
   go: `// Go Example
 package main
@@ -438,139 +388,6 @@ fn main() {
 
 fn greet(name: &str) -> String {
     format!("Hello, {}!", name)
-}`,
-
-  swift: `// Swift Example
-import Foundation
-
-print("Hello, World!")
-
-// Variables
-let number = 42
-let message = "Swift Programming"
-
-print("Number: \\(number)")
-print("Message: \\(message)")
-
-// Array
-let numbers = [1, 2, 3, 4, 5]
-print("Numbers: \\(numbers)")
-
-// Dictionary
-let person = [
-    "name": "John",
-    "age": "30",
-    "city": "New York"
-]
-print("Person: \\(person)")
-
-// Function
-func greet(name: String) -> String {
-    return "Hello, \\(name)!"
-}
-
-print(greet(name: "Swift Developer"))
-
-// Class
-class Greeter {
-    var name: String
-    
-    init(name: String) {
-        self.name = name
-    }
-    
-    func sayHello() -> String {
-        return "Hello, \\(name)!"
-    }
-}
-
-let greeter = Greeter(name: "Swift")
-print(greeter.sayHello())
-
-// Higher-order functions
-let squares = (1...5).map { $0 * $0 }
-print("Squares: \\(squares)")`,
-
-  kotlin: `// Kotlin Example
-fun main() {
-    println("Hello, World!")
-    
-    // Variables
-    val number = 42
-    val message = "Kotlin Programming"
-    
-    println("Number: $number")
-    println("Message: $message")
-    
-    // List
-    val numbers = listOf(1, 2, 3, 4, 5)
-    println("Numbers: $numbers")
-    
-    // Map
-    val person = mapOf(
-        "name" to "John",
-        "age" to 30,
-        "city" to "New York"
-    )
-    println("Person: $person")
-    
-    // Function call
-    val greeting = greet("Kotlin Developer")
-    println(greeting)
-    
-    // Data class
-    data class Person(val name: String, val age: Int)
-    val john = Person("John", 30)
-    println("Data class: $john")
-    
-    // Lambda and higher-order functions
-    val squares = (1..5).map { it * it }
-    println("Squares: $squares")
-}
-
-fun greet(name: String): String {
-    return "Hello, $name!"
-}`,
-
-  scala: `// Scala Example
-object HelloWorld extends App {
-    println("Hello, World!")
-    
-    // Variables
-    val number = 42
-    val message = "Scala Programming"
-    
-    println(s"Number: $number")
-    println(s"Message: $message")
-    
-    // List
-    val numbers = List(1, 2, 3, 4, 5)
-    println(s"Numbers: $numbers")
-    
-    // Map
-    val person = Map(
-        "name" -> "John",
-        "age" -> 30,
-        "city" -> "New York"
-    )
-    println(s"Person: $person")
-    
-    // Function call
-    val greeting = greet("Scala Developer")
-    println(greeting)
-    
-    // Case class
-    case class Person(name: String, age: Int)
-    val john = Person("John", 30)
-    println(s"Case class: $john")
-    
-    // Higher-order functions
-    val squares = (1 to 5).map(x => x * x)
-    println(s"Squares: $squares")
-}
-
-def greet(name: String): String = {
-    s"Hello, $name!"
 }`,
 
   html: `<!DOCTYPE html>
@@ -914,184 +731,6 @@ h3 { font-size: 1.75rem; }
     }
 }`,
 
-  xml: `<?xml version="1.0" encoding="UTF-8"?>
-<!-- XML Example Document -->
-<catalog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <metadata>
-        <title>Programming Languages Catalog</title>
-        <description>A collection of popular programming languages</description>
-        <version>1.0</version>
-        <lastUpdated>2024-01-01</lastUpdated>
-    </metadata>
-    
-    <languages>
-        <language id="js" type="interpreted">
-            <name>JavaScript</name>
-            <category>Web Development</category>
-            <year>1995</year>
-            <creator>Brendan Eich</creator>
-            <features>
-                <feature>Dynamic typing</feature>
-                <feature>First-class functions</feature>
-                <feature>Prototype-based OOP</feature>
-            </features>
-            <popularity rating="10">Very High</popularity>
-        </language>
-        
-        <language id="py" type="interpreted">
-            <name>Python</name>
-            <category>General Purpose</category>
-            <year>1991</year>
-            <creator>Guido van Rossum</creator>
-            <features>
-                <feature>Clean syntax</feature>
-                <feature>Dynamic typing</feature>
-                <feature>Extensive libraries</feature>
-            </features>
-            <popularity rating="9">Very High</popularity>
-        </language>
-        
-        <language id="java" type="compiled">
-            <name>Java</name>
-            <category>Enterprise</category>
-            <year>1995</year>
-            <creator>James Gosling</creator>
-            <features>
-                <feature>Platform independent</feature>
-                <feature>Object-oriented</feature>
-                <feature>Strong typing</feature>
-            </features>
-            <popularity rating="8">High</popularity>
-        </language>
-    </languages>
-    
-    <statistics>
-        <totalLanguages>3</totalLanguages>
-        <categories>
-            <category name="Web Development" count="1"/>
-            <category name="General Purpose" count="1"/>
-            <category name="Enterprise" count="1"/>
-        </categories>
-    </statistics>
-</catalog>`,
-
-  yaml: `# YAML Example - Configuration File
----
-application:
-  name: "Learnod Learning Platform"
-  version: "1.0.0"
-  description: "Interactive coding education platform"
-  
-environment:
-  development:
-    database:
-      host: "localhost"
-      port: 5432
-      name: "learnod_dev"
-      username: "dev_user"
-      password: "dev_password"
-      ssl: false
-    
-    redis:
-      host: "localhost"
-      port: 6379
-      database: 0
-      
-    logging:
-      level: "debug"
-      file: "./logs/development.log"
-      
-  production:
-    database:
-      host: "\${DB_HOST}"
-      port: \${DB_PORT}
-      name: "\${DB_NAME}"
-      username: "\${DB_USER}"
-      password: "\${DB_PASSWORD}"
-      ssl: true
-      
-    redis:
-      host: "\${REDIS_HOST}"
-      port: \${REDIS_PORT}
-      database: 0
-      
-    logging:
-      level: "info"
-      file: "./logs/production.log"
-
-features:
-  codeEditor:
-    enabled: true
-    languages:
-      - javascript
-      - typescript
-      - python
-      - html
-      - css
-      - json
-      - yaml
-      - xml
-    settings:
-      fontSize: 14
-      lineNumbers: true
-      autoComplete: true
-      
-  videoPlayer:
-    enabled: true
-    providers:
-      - youtube
-      - vimeo
-    autoplay: false
-    
-  themes:
-    - name: "light"
-      primary: "#007bff"
-      secondary: "#6c757d"
-      background: "#ffffff"
-      
-    - name: "dark"
-      primary: "#4dabf7"
-      secondary: "#868e96"
-      background: "#1a1a1a"
-
-security:
-  cors:
-    enabled: true
-    origins:
-      - "http://localhost:3000"
-      - "https://learnod.com"
-      
-  rateLimit:
-    windowMs: 900000  # 15 minutes
-    max: 100  # requests per window
-    
-  codeExecution:
-    timeout: 5000  # milliseconds
-    memoryLimit: "128MB"
-    sandboxed: true
-    
-deployment:
-  docker:
-    image: "learnod/platform:latest"
-    ports:
-      - "3000:3000"
-    volumes:
-      - "./data:/app/data"
-      - "./logs:/app/logs"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      
-  kubernetes:
-    replicas: 3
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "250m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"`,
-
   sql: `-- SQL Example - Database Operations
 -- Create database schema for a learning platform
 
@@ -1213,239 +852,6 @@ WHERE user_id = 1 AND course_id = 1;
 CREATE INDEX idx_enrollments_user_course ON enrollments(user_id, course_id);
 CREATE INDEX idx_lessons_course_order ON lessons(course_id, order_number);
 CREATE INDEX idx_courses_category ON courses(category);`,
-
-  markdown: `# Learnod - Interactive Learning Platform
-
-![Learnod Logo](https://via.placeholder.com/400x200/007bff/ffffff?text=Learnod)
-
-## 🚀 Welcome to the Future of Learning
-
-**Learnod** is a revolutionary interactive learning platform that combines the power of video tutorials with hands-on coding practice. Built with modern web technologies, it provides an immersive learning experience for developers of all skill levels.
-
----
-
-## ✨ Features
-
-### 🎥 Video Integration
-- **YouTube Integration**: Watch tutorials directly in the platform
-- **Responsive Player**: Adapts to any screen size
-- **Custom URLs**: Support for any YouTube video
-
-### 💻 Advanced Code Editor
-- **Monaco Editor**: VS Code-like editing experience
-- **20+ Languages**: Support for JavaScript, Python, Java, C++, and more
-- **Real-time Execution**: Run code instantly with immediate feedback
-- **Syntax Highlighting**: Beautiful syntax highlighting for all languages
-- **Auto-completion**: IntelliSense-powered code completion
-
-### 🌓 Theme Support
-- **Dark/Light Mode**: Toggle between themes
-- **Persistent Settings**: Your preferences are saved
-- **Responsive Design**: Beautiful on all devices
-
----
-
-## 🛠️ Supported Languages
-
-| Language | Execution | Features |
-|----------|-----------|----------|
-| JavaScript | ✅ Full | Console output, error handling |
-| TypeScript | ✅ Full | Type checking, console output |
-| Python | ✅ Pyodide | NumPy, Pandas, Matplotlib |
-| HTML | ✅ Validation | Syntax validation, analysis |
-| CSS | ✅ Validation | Style validation, analysis |
-| JSON | ✅ Parsing | Validation, object analysis |
-| Java | ❌ Info | Syntax highlighting only |
-| C++ | ❌ Info | Syntax highlighting only |
-| C# | ❌ Info | Syntax highlighting only |
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-\`\`\`bash
-node --version  # v16+
-npm --version   # v8+
-\`\`\`
-
-### Installation
-\`\`\`bash
-# Clone the repository
-git clone https://github.com/yourusername/learnod.git
-cd learnod
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Open in browser
-open http://localhost:3000
-\`\`\`
-
----
-
-## 💡 Usage Examples
-
-### JavaScript Example
-\`\`\`javascript
-// Variables and functions
-const greeting = "Hello, World!";
-console.log(greeting);
-
-// Arrays and methods
-const numbers = [1, 2, 3, 4, 5];
-const doubled = numbers.map(n => n * 2);
-console.log("Doubled:", doubled);
-
-// Objects
-const person = {
-    name: "Alice",
-    age: 30,
-    greet() {
-        return \`Hello, I'm \${this.name}\`;
-    }
-};
-console.log(person.greet());
-\`\`\`
-
-### Python Example
-\`\`\`python
-# Lists and comprehensions
-numbers = [1, 2, 3, 4, 5]
-squares = [n**2 for n in numbers]
-print(f"Squares: {squares}")
-
-# Functions and classes
-class Calculator:
-    def __init__(self):
-        self.history = []
-    
-    def add(self, a, b):
-        result = a + b
-        self.history.append(f"{a} + {b} = {result}")
-        return result
-
-calc = Calculator()
-print(calc.add(5, 3))
-print(calc.history)
-\`\`\`
-
----
-
-## 🎯 Learning Paths
-
-### 🌟 Beginner
-1. **HTML Basics** - Structure your content
-2. **CSS Fundamentals** - Style your pages
-3. **JavaScript Intro** - Add interactivity
-
-### 🚀 Intermediate
-1. **Advanced JavaScript** - ES6+, Async/Await
-2. **Python Programming** - Data structures, OOP
-3. **Web APIs** - Fetch, DOM manipulation
-
-### 🏆 Advanced
-1. **TypeScript** - Type-safe JavaScript
-2. **System Design** - Architecture patterns
-3. **Performance** - Optimization techniques
-
----
-
-## 🔧 Configuration
-
-### Editor Settings
-\`\`\`json
-{
-  "fontSize": 14,
-  "lineNumbers": true,
-  "autoComplete": true,
-  "theme": "vs-dark",
-  "minimap": false
-}
-\`\`\`
-
-### Execution Environment
-\`\`\`yaml
-timeout: 5000ms
-memoryLimit: 128MB
-sandboxed: true
-languages:
-  - javascript
-  - python
-  - html
-  - css
-\`\`\`
-
----
-
-## 📊 Statistics
-
-> **20+** Programming languages supported  
-> **6** Languages with full execution  
-> **∞** Learning possibilities  
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-1. **🐛 Report Bugs**: [Create an issue](https://github.com/yourusername/learnod/issues)
-2. **💡 Suggest Features**: Share your ideas
-3. **🔧 Submit PRs**: Fix bugs or add features
-4. **📖 Improve Docs**: Help others learn
-
-### Development Workflow
-\`\`\`bash
-# 1. Fork the repository
-# 2. Create a feature branch
-git checkout -b feature/amazing-feature
-
-# 3. Make your changes
-# 4. Test your changes
-npm test
-
-# 5. Commit your changes
-git commit -m "Add amazing feature"
-
-# 6. Push to your fork
-git push origin feature/amazing-feature
-
-# 7. Create a Pull Request
-\`\`\`
-
----
-
-## 📝 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - VS Code editor for the web
-- [Next.js](https://nextjs.org/) - The React framework for production
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [Pyodide](https://pyodide.org/) - Python for the browser
-
----
-
-## 📞 Support
-
-- 📧 **Email**: support@learnod.com
-- 💬 **Discord**: [Join our community](https://discord.gg/learnod)
-- 🐦 **Twitter**: [@LearnodPlatform](https://twitter.com/learnodplatform)
-- 📚 **Docs**: [documentation.learnod.com](https://docs.learnod.com)
-
----
-
-**Happy Learning! 🎓**
-
-*Made with ❤️ by the Learnod Team*`,
 
   shell: `#!/bin/bash
 # Shell Script Example - System Administration
@@ -1611,294 +1017,6 @@ print_status "Cleanup complete!"
 
 echo ""
 print_status "Script execution completed successfully!"`,
-
-  powershell: `# PowerShell Example - System Administration and Automation
-
-# Define colors for output
-$Colors = @{
-    Info    = 'Green'
-    Warning = 'Yellow'
-    Error   = 'Red'
-    Header  = 'Cyan'
-}
-
-# Function to write colored output
-function Write-ColorOutput {
-    param(
-        [string]$Message,
-        [string]$Type = 'Info'
-    )
-    Write-Host "[$Type] $Message" -ForegroundColor $Colors[$Type]
-}
-
-# Header
-Write-Host "PowerShell System Administration Example" -ForegroundColor $Colors.Header
-Write-Host "=======================================" -ForegroundColor $Colors.Header
-
-# System Information
-Write-ColorOutput "Gathering System Information..." "Info"
-
-$SystemInfo = @{
-    ComputerName = $env:COMPUTERNAME
-    OSVersion    = (Get-WmiObject Win32_OperatingSystem).Caption
-    PowerShell   = $PSVersionTable.PSVersion.ToString()
-    CurrentUser  = $env:USERNAME
-    Domain       = $env:USERDOMAIN
-    LogonServer  = $env:LOGONSERVER
-    Uptime       = (Get-Date) - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
-}
-
-# Display system information
-Write-ColorOutput "System Information:" "Header"
-$SystemInfo.GetEnumerator() | ForEach-Object {
-    Write-Host "  $($_.Key): $($_.Value)"
-}
-
-# Hardware Information
-Write-ColorOutput "Hardware Information:" "Header"
-
-# CPU Information
-$CPU = Get-WmiObject Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors
-Write-Host "  CPU: $($CPU.Name)"
-Write-Host "  Cores: $($CPU.NumberOfCores), Logical Processors: $($CPU.NumberOfLogicalProcessors)"
-
-# Memory Information
-$Memory = Get-WmiObject Win32_ComputerSystem
-$MemoryGB = [math]::Round($Memory.TotalPhysicalMemory / 1GB, 2)
-Write-Host "  Total Memory: $MemoryGB GB"
-
-# Disk Information
-Write-ColorOutput "Disk Information:" "Header"
-Get-WmiObject Win32_LogicalDisk | Where-Object { $_.DriveType -eq 3 } | ForEach-Object {
-    $UsedSpace = [math]::Round(($_.Size - $_.FreeSpace) / 1GB, 2)
-    $FreeSpace = [math]::Round($_.FreeSpace / 1GB, 2)
-    $TotalSpace = [math]::Round($_.Size / 1GB, 2)
-    $PercentUsed = [math]::Round(($UsedSpace / $TotalSpace) * 100, 2)
-    
-    Write-Host "  Drive $($_.DeviceID) - Total: $TotalSpace GB, Used: $UsedSpace GB, Free: $FreeSpace GB ($PercentUsed% used)"
-}
-
-# Network Information
-Write-ColorOutput "Network Information:" "Header"
-Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | ForEach-Object {
-    Write-Host "  Interface: $($_.Name) - Status: $($_.Status)"
-}
-
-# Process Management Examples
-Write-ColorOutput "Process Management Examples:" "Header"
-
-# Top CPU consuming processes
-Write-Host "  Top 5 CPU consuming processes:"
-Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 | ForEach-Object {
-    Write-Host "    $($_.ProcessName): CPU Time: $([math]::Round($_.CPU, 2)) seconds"
-}
-
-# Memory consuming processes
-Write-Host "  Top 5 Memory consuming processes:"
-Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 5 | ForEach-Object {
-    $MemoryMB = [math]::Round($_.WorkingSet / 1MB, 2)
-    Write-Host "    $($_.ProcessName): Memory: $MemoryMB MB"
-}
-
-# File and Directory Operations
-Write-ColorOutput "File Operations Example:" "Header"
-
-# Create temporary directory
-$TempPath = Join-Path $env:TEMP "PowerShellExample_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-New-Item -Path $TempPath -ItemType Directory -Force | Out-Null
-Write-ColorOutput "Created temporary directory: $TempPath" "Info"
-
-# Create sample files
-$SampleFiles = @{
-    'system_info.txt' = $SystemInfo | ConvertTo-Json -Depth 3
-    'processes.csv'   = Get-Process | Select-Object ProcessName, Id, CPU, WorkingSet | ConvertTo-Csv -NoTypeInformation
-    'services.txt'    = Get-Service | Where-Object { $_.Status -eq 'Running' } | Out-String
-    'timestamp.txt'   = "File created at: $(Get-Date)"
-}
-
-$SampleFiles.GetEnumerator() | ForEach-Object {
-    $FilePath = Join-Path $TempPath $_.Key
-    $_.Value | Out-File -FilePath $FilePath -Encoding UTF8
-    Write-Host "  Created: $($_.Key)"
-}
-
-# File processing examples
-Write-ColorOutput "File Processing Examples:" "Header"
-
-# Read and filter content
-$ProcessFile = Join-Path $TempPath "processes.csv"
-$HighMemoryProcesses = Import-Csv $ProcessFile | Where-Object { [int]$_.WorkingSet -gt 50MB } | Select-Object -First 5
-
-Write-Host "  High memory processes (>50MB):"
-$HighMemoryProcesses | ForEach-Object {
-    $MemoryMB = [math]::Round([int]$_.WorkingSet / 1MB, 2)
-    Write-Host "    $($_.ProcessName): $MemoryMB MB"
-}
-
-# Array and Collection Examples
-Write-ColorOutput "Array and Collection Examples:" "Header"
-
-# Array operations
-$Numbers = 1..10
-$EvenNumbers = $Numbers | Where-Object { $_ % 2 -eq 0 }
-$Squared = $Numbers | ForEach-Object { $_ * $_ }
-
-Write-Host "  Original: $($Numbers -join ', ')"
-Write-Host "  Even numbers: $($EvenNumbers -join ', ')"
-Write-Host "  Squared: $($Squared -join ', ')"
-
-# Hash table example
-$ServerConfig = @{
-    'WebServer'      = @{ Port = 80; Status = 'Running'; CPU = 15.2 }
-    'DatabaseServer' = @{ Port = 1433; Status = 'Running'; CPU = 8.7 }
-    'FileServer'     = @{ Port = 445; Status = 'Stopped'; CPU = 0.0 }
-}
-
-Write-Host "  Server Configuration:"
-$ServerConfig.GetEnumerator() | ForEach-Object {
-    $Server = $_.Value
-    Write-Host "    $($_.Key): Port $($Server.Port), Status: $($Server.Status), CPU: $($Server.CPU)%"
-}
-
-# Function Examples
-Write-ColorOutput "Function Examples:" "Header"
-
-# Function to check service status
-function Get-ServiceStatus {
-    param(
-        [string[]]$ServiceNames
-    )
-    
-    foreach ($ServiceName in $ServiceNames) {
-        $Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-        if ($Service) {
-            $Status = if ($Service.Status -eq 'Running') { 'Running' } else { 'Stopped' }
-            Write-Host "    Service '$ServiceName': $Status"
-        } else {
-            Write-ColorOutput "Service '$ServiceName' not found" "Warning"
-        }
-    }
-}
-
-# Use the function
-Write-Host "  Checking critical services:"
-Get-ServiceStatus -ServiceNames @('Spooler', 'Themes', 'AudioSrv', 'NonExistentService')
-
-# Advanced Pipeline Example
-Write-ColorOutput "Advanced Pipeline Example:" "Header"
-
-# Get running services, group by status, and count
-$ServiceSummary = Get-Service | 
-    Group-Object Status | 
-    Select-Object Name, Count | 
-    Sort-Object Count -Descending
-
-Write-Host "  Service Status Summary:"
-$ServiceSummary | ForEach-Object {
-    Write-Host "    $($_.Name): $($_.Count) services"
-}
-
-# Error Handling Example
-Write-ColorOutput "Error Handling Example:" "Header"
-
-try {
-    # Attempt to access a non-existent registry key
-    $RegistryKey = Get-ItemProperty -Path "HKLM:\\SOFTWARE\\NonExistent" -ErrorAction Stop
-    Write-Host "  Registry access successful"
-} catch {
-    Write-ColorOutput "Expected error caught: $($_.Exception.Message)" "Warning"
-} finally {
-    Write-Host "  Error handling example completed"
-}
-
-# Event Log Example
-Write-ColorOutput "Event Log Example:" "Header"
-
-# Get recent system events
-$RecentEvents = Get-WinEvent -FilterHashtable @{LogName='System'; Level=2,3} -MaxEvents 5 -ErrorAction SilentlyContinue
-
-if ($RecentEvents) {
-    Write-Host "  Recent system events (Warnings and Errors):"
-    $RecentEvents | ForEach-Object {
-        Write-Host "    $($_.TimeCreated): $($_.LevelDisplayName) - $($_.Id)"
-    }
-} else {
-    Write-Host "  No recent system events found"
-}
-
-# Performance Counter Example
-Write-ColorOutput "Performance Counter Example:" "Header"
-
-try {
-    $CPUUsage = (Get-Counter "\\Processor(_Total)\\% Processor Time" -SampleInterval 1 -MaxSamples 1).CounterSamples.CookedValue
-    $MemoryUsage = (Get-Counter "\\Memory\\Available MBytes").CounterSamples.CookedValue
-    
-    Write-Host "  Current CPU Usage: $([math]::Round($CPUUsage, 2))%"
-    Write-Host "  Available Memory: $([math]::Round($MemoryUsage, 2)) MB"
-} catch {
-    Write-ColorOutput "Performance counter access failed: $($_.Exception.Message)" "Warning"
-}
-
-# Cleanup
-Write-ColorOutput "Cleaning up temporary files..." "Info"
-Remove-Item -Path $TempPath -Recurse -Force -ErrorAction SilentlyContinue
-Write-ColorOutput "Cleanup completed!" "Info"
-
-# Summary
-Write-ColorOutput "PowerShell Script Execution Summary:" "Header"
-Write-Host "  - System information gathered"
-Write-Host "  - Hardware details collected"
-Write-Host "  - Process and service analysis completed"
-Write-Host "  - File operations demonstrated"
-Write-Host "  - Advanced PowerShell features showcased"
-Write-Host "  - Error handling and performance monitoring included"
-
-Write-ColorOutput "Script execution completed successfully!" "Info"`,
-
-  html: `<!DOCTYPE html>
-<html>
-<head>
-    <title>Example</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        h1 {
-            color: #333;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Hello World</h1>
-        <p>This is an example HTML document.</p>
-        <ul>
-            <li>Item 1</li>
-            <li>Item 2</li>
-            <li>Item 3</li>
-        </ul>
-    </div>
-</body>
-</html>`,
-
-  json: `{
-    "name": "Example JSON",
-    "version": "1.0.0",
-    "description": "A sample JSON object",
-    "data": {
-        "numbers": [1, 2, 3, 4, 5],
-        "text": "Hello World",
-        "boolean": true,
-        "nested": {
-            "key": "value"
-        }
-    }
-}`,
 };
 
 const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -1912,6 +1030,24 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   const [fontSize, setFontSize] = useState(14);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
 
+  // Map our language IDs to Monaco Editor language IDs
+  const getMonacoLanguage = (lang: string): string => {
+    const languageMap: Record<string, string> = {
+      javascript: "javascript",
+      typescript: "typescript",
+      python: "python",
+      java: "java",
+      cpp: "cpp",
+      c: "c",
+      php: "php",
+      go: "go",
+      rust: "rust",
+      html: "html",
+      css: "css",
+    };
+    return languageMap[lang] || "javascript";
+  };
+
   // Load example code when language changes
   useEffect(() => {
     if (exampleCode[language as keyof typeof exampleCode]) {
@@ -1919,8 +1055,95 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   }, [language, setCode]);
 
+  // Configure Monaco Editor when component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      configureMonaco();
+    }, 1000); // Wait for Monaco to load
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setLanguage(e.target.value);
+  };
+
+  const formatCodeSilently = async (codeToFormat: string): Promise<string> => {
+    try {
+      // Map language to Prettier parser
+      const getParser = (lang: string): string => {
+        const parserMap: Record<string, string> = {
+          javascript: "babel",
+          typescript: "typescript",
+          html: "html",
+          css: "css",
+          json: "json",
+        };
+        return parserMap[lang] || "babel";
+      };
+
+      // Get plugins for the language
+      const getPlugins = (lang: string) => {
+        const plugins = [prettierPluginEstree];
+
+        if (lang === "javascript" || lang === "typescript") {
+          plugins.push(prettierPluginBabel);
+        }
+
+        if (lang === "typescript") {
+          plugins.push(prettierPluginTypescript);
+        }
+
+        if (lang === "html") {
+          plugins.push(prettierPluginHtml);
+        }
+
+        if (lang === "css") {
+          plugins.push(prettierPluginCss);
+        }
+
+        return plugins;
+      };
+
+      // Only format supported languages
+      const supportedLanguages = [
+        "javascript",
+        "typescript",
+        "html",
+        "css",
+        "json",
+      ];
+
+      if (!supportedLanguages.includes(language) || !codeToFormat.trim()) {
+        return codeToFormat; // Return original code if not supported or empty
+      }
+
+      // Basic syntax validation for JS/TS
+      if (language === "javascript" || language === "typescript") {
+        const openBraces = (codeToFormat.match(/{/g) || []).length;
+        const closeBraces = (codeToFormat.match(/}/g) || []).length;
+
+        if (openBraces !== closeBraces) {
+          return codeToFormat; // Return original if syntax issues
+        }
+      }
+
+      const formatted = await prettier.format(codeToFormat, {
+        parser: getParser(language),
+        plugins: getPlugins(language),
+        semi: true,
+        singleQuote: false,
+        tabWidth: 2,
+        trailingComma: "es5",
+        printWidth: 80,
+      });
+
+      return formatted;
+    } catch (error) {
+      // Silently return original code if formatting fails
+      console.warn("Auto-formatting failed:", error);
+      return codeToFormat;
+    }
   };
 
   const handleRunCode = async () => {
@@ -1928,8 +1151,38 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
     setIsExecuting(true);
     try {
-      const executionService = CodeExecutionService.getInstance();
-      const output = await executionService.executeCode(code, language);
+      // Auto-format code before running
+      const formattedCode = await formatCodeSilently(code);
+      if (formattedCode !== code) {
+        setCode(formattedCode);
+      }
+
+      let output = "";
+      if (
+        language === "java" ||
+        language === "cpp" ||
+        language === "typescript" ||
+        language === "c" ||
+        language === "php" ||
+        language === "go" ||
+        language === "rust"
+      ) {
+        // Use Judge0 API via Next.js route
+        const res = await fetch("/api/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: formattedCode, language }),
+        });
+        const data = await res.json();
+        if (data.stderr) output = data.stderr;
+        else if (data.compile_output) output = data.compile_output;
+        else if (data.stdout) output = data.stdout;
+        else if (data.message) output = data.message;
+        else output = JSON.stringify(data, null, 2);
+      } else {
+        const executionService = CodeExecutionService.getInstance();
+        output = await executionService.executeCode(formattedCode, language);
+      }
       if (onOutputChange) {
         onOutputChange(output);
       }
@@ -1960,128 +1213,178 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         isDarkMode ? "bg-gray-900 dark" : "bg-white"
       }`}
     >
-      <div className="p-4">
-        {/* Top Controls */}
-        <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-          <div className="flex items-center space-x-4">
-            <label
-              className={`text-sm font-medium ${
-                isDarkMode ? "text-gray-300" : "text-gray-700"
-              }`}
-            >
-              Language:
-              <select
-                value={language}
-                onChange={handleLanguageChange}
-                className={`ml-2 p-2 rounded border editor-select ${
-                  isDarkMode
-                    ? "bg-gray-800 text-white border-gray-700"
-                    : "bg-white text-gray-900 border-gray-300"
+      {language === "web" ? (
+        // Render WebEditor for Web (HTML/CSS/JS) mode
+        <div className="p-4">
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <div className="flex items-center space-x-4">
+              <label
+                className={`text-sm font-medium ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
                 }`}
               >
-                {languages.map((lang) => (
-                  <option key={lang.id} value={lang.id}>
-                    {lang.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                Language:
+                <select
+                  value={language}
+                  onChange={handleLanguageChange}
+                  className={`ml-2 p-2 rounded border editor-select ${
+                    isDarkMode
+                      ? "bg-gray-800 text-white border-gray-700"
+                      : "bg-white text-gray-900 border-gray-300"
+                  }`}
+                >
+                  {languages.map(lang => (
+                    <option key={lang.id} value={lang.id}>
+                      {lang.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+          <WebEditor isDarkMode={isDarkMode} onOutputChange={onOutputChange} />
+        </div>
+      ) : (
+        // Render regular CodeEditor for other languages
+        <>
+          <div className="p-4">
+            {/* Top Controls */}
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+              <div className="flex items-center space-x-4">
+                <label
+                  className={`text-sm font-medium ${
+                    isDarkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Language:
+                  <select
+                    value={language}
+                    onChange={handleLanguageChange}
+                    className={`ml-2 p-2 rounded border editor-select ${
+                      isDarkMode
+                        ? "bg-gray-800 text-white border-gray-700"
+                        : "bg-white text-gray-900 border-gray-300"
+                    }`}
+                  >
+                    {languages.map(lang => (
+                      <option key={lang.id} value={lang.id}>
+                        {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleResetCode}
+                  className={`px-4 py-2 rounded editor-button ${
+                    isDarkMode
+                      ? "bg-gray-700 text-white hover:bg-gray-600"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  Reset Code
+                </button>
+
+                <button
+                  onClick={handleRunCode}
+                  disabled={isExecuting}
+                  className={`px-4 py-2 rounded editor-button ${
+                    isExecuting
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : isDarkMode
+                        ? "bg-blue-600 hover:bg-blue-700"
+                        : "bg-blue-500 hover:bg-blue-600"
+                  } text-white transition`}
+                >
+                  {isExecuting && <span className="loading-spinner"></span>}
+                  {isExecuting ? "Running..." : "Run Code"}
+                </button>
+              </div>
+            </div>
+
+            {/* Editor Settings */}
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+              <label
+                className={`text-sm font-medium ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Font Size:
+                <input
+                  type="range"
+                  min="10"
+                  max="24"
+                  value={fontSize}
+                  onChange={handleFontSizeChange}
+                  className="ml-2"
+                />
+                <span className="ml-2">{fontSize}px</span>
+              </label>
+
+              <label
+                className={`text-sm font-medium ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={showLineNumbers}
+                  onChange={() => setShowLineNumbers(!showLineNumbers)}
+                  className="mr-2"
+                />
+                Line Numbers
+              </label>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={handleResetCode}
-              className={`px-4 py-2 rounded editor-button ${
-                isDarkMode
-                  ? "bg-gray-700 text-white hover:bg-gray-600"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              Reset Code
-            </button>
-
-            <button
-              onClick={handleRunCode}
-              disabled={isExecuting}
-              className={`px-4 py-2 rounded editor-button ${
-                isExecuting
-                  ? "bg-gray-600 cursor-not-allowed"
-                  : isDarkMode
-                  ? "bg-blue-600 hover:bg-blue-700"
-                  : "bg-blue-500 hover:bg-blue-600"
-              } text-white transition`}
-            >
-              {isExecuting && <span className="loading-spinner"></span>}
-              {isExecuting ? "Running..." : "Run Code"}
-            </button>
+          {/* Editor */}
+          <div className="editor-container flex-1">
+            <MonacoEditor
+              height="100%"
+              language={getMonacoLanguage(language)}
+              theme={isDarkMode ? "vs-dark" : "vs-light"}
+              value={code}
+              onChange={newCode => setCode(newCode || "")}
+              options={{
+                selectOnLineNumbers: true,
+                minimap: { enabled: false },
+                fontSize: fontSize,
+                lineNumbers: showLineNumbers ? "on" : "off",
+                roundedSelection: false,
+                scrollBeyondLastLine: false,
+                readOnly: false,
+                cursorStyle: "line",
+                automaticLayout: true,
+                smoothScrolling: true,
+                mouseWheelZoom: true,
+                renderWhitespace: "selection",
+                renderLineHighlight: "all",
+                colorDecorators: true,
+                wordWrap: "on",
+                suggest: {
+                  showWords: true,
+                  showKeywords: true,
+                  showSnippets: true,
+                },
+                quickSuggestions: true,
+                parameterHints: { enabled: true },
+                formatOnType: true,
+                formatOnPaste: true,
+                bracketPairColorization: { enabled: true },
+                folding: true,
+                foldingStrategy: "indentation",
+                scrollbar: {
+                  vertical: "visible",
+                  horizontal: "visible",
+                  useShadows: false,
+                },
+              }}
+            />
           </div>
-        </div>
-
-        {/* Editor Settings */}
-        <div className="flex flex-wrap items-center gap-4 mb-4">
-          <label
-            className={`text-sm font-medium ${
-              isDarkMode ? "text-gray-300" : "text-gray-700"
-            }`}
-          >
-            Font Size:
-            <input
-              type="range"
-              min="10"
-              max="24"
-              value={fontSize}
-              onChange={handleFontSizeChange}
-              className="ml-2"
-            />
-            <span className="ml-2">{fontSize}px</span>
-          </label>
-
-          <label
-            className={`text-sm font-medium ${
-              isDarkMode ? "text-gray-300" : "text-gray-700"
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={showLineNumbers}
-              onChange={() => setShowLineNumbers(!showLineNumbers)}
-              className="mr-2"
-            />
-            Line Numbers
-          </label>
-        </div>
-      </div>
-
-      {/* Editor */}
-      <div className="editor-container flex-1">
-        <MonacoEditor
-          height="100%"
-          language={language}
-          theme={isDarkMode ? "vs-dark" : "vs-light"}
-          value={code}
-          onChange={(newCode) => setCode(newCode || "")}
-          options={{
-            selectOnLineNumbers: true,
-            minimap: { enabled: false },
-            fontSize: fontSize,
-            lineNumbers: showLineNumbers ? "on" : "off",
-            roundedSelection: false,
-            scrollBeyondLastLine: false,
-            readOnly: false,
-            cursorStyle: "line",
-            automaticLayout: true,
-            smoothScrolling: true,
-            mouseWheelZoom: true,
-            renderWhitespace: "selection",
-            renderLineHighlight: "all",
-            scrollbar: {
-              vertical: "visible",
-              horizontal: "visible",
-              useShadows: false,
-            },
-          }}
-        />
-      </div>
+        </>
+      )}
     </div>
   );
 };

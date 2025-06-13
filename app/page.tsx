@@ -83,16 +83,18 @@ export default function Home() {
             </h2>
           </div>
           <div className="flex justify-center space-x-8 flex-wrap">
-            {["HTML", "JavaScript", "Python", "JSON"].map((lang) => (
-              <div key={lang} className="text-center p-4">
-                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-2 mx-auto">
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    {lang.slice(0, 2)}
-                  </span>
+            {["JavaScript", "Python", "Java", "C++", "TypeScript", "Web"].map(
+              lang => (
+                <div key={lang} className="text-center p-4">
+                  <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-2 mx-auto">
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">
+                      {lang.slice(0, 2)}
+                    </span>
+                  </div>
+                  <p className="text-gray-700 dark:text-gray-300">{lang}</p>
                 </div>
-                <p className="text-gray-700 dark:text-gray-300">{lang}</p>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
       </section>

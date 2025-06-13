@@ -26,7 +26,10 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ onThemeChange }) => {
     document.documentElement.classList.add("transition-colors", "duration-500");
     document.body.classList.add("transition-colors", "duration-500");
     return () => {
-      document.documentElement.classList.remove("transition-colors", "duration-500");
+      document.documentElement.classList.remove(
+        "transition-colors",
+        "duration-500"
+      );
       document.body.classList.remove("transition-colors", "duration-500");
     };
   }, []);

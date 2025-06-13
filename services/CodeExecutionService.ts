@@ -132,7 +132,7 @@ export class CodeExecutionService {
       log: (...args: any[]) => {
         output.push(
           args
-            .map((arg) =>
+            .map(arg =>
               typeof arg === "object"
                 ? JSON.stringify(arg, null, 2)
                 : String(arg)
@@ -141,13 +141,13 @@ export class CodeExecutionService {
         );
       },
       error: (...args: any[]) => {
-        output.push("ERROR: " + args.map((arg) => String(arg)).join(" "));
+        output.push("ERROR: " + args.map(arg => String(arg)).join(" "));
       },
       warn: (...args: any[]) => {
-        output.push("WARNING: " + args.map((arg) => String(arg)).join(" "));
+        output.push("WARNING: " + args.map(arg => String(arg)).join(" "));
       },
       info: (...args: any[]) => {
-        output.push("INFO: " + args.map((arg) => String(arg)).join(" "));
+        output.push("INFO: " + args.map(arg => String(arg)).join(" "));
       },
     };
 
@@ -451,7 +451,7 @@ Please check your HTML syntax.`;
 
       // Basic HTML analysis
       const elements = doc.getElementsByTagName("*");
-      const tags = Array.from(elements).map((el) => el.tagName.toLowerCase());
+      const tags = Array.from(elements).map(el => el.tagName.toLowerCase());
       const uniqueTags = [...new Set(tags)];
 
       // Check for semantic elements
@@ -464,7 +464,7 @@ Please check your HTML syntax.`;
         "aside",
         "footer",
       ];
-      const hasSemanticHTML = semanticTags.some((tag) => tags.includes(tag));
+      const hasSemanticHTML = semanticTags.some(tag => tags.includes(tag));
 
       // Check for accessibility features
       const hasAltText = code.includes("alt=");
@@ -540,10 +540,10 @@ ${code}
       let mediaQueries = 0;
       let keyframes = 0;
 
-      Array.from(rules).forEach((rule) => {
+      Array.from(rules).forEach(rule => {
         if (rule instanceof CSSStyleRule) {
           selectors.push(rule.selectorText);
-          Array.from(rule.style).forEach((prop) => {
+          Array.from(rule.style).forEach(prop => {
             if (!properties.includes(prop)) {
               properties.push(prop);
             }
@@ -715,7 +715,7 @@ XML structure is well-formed and ready to use!`;
       return `YAML appears valid! ✅
 
 Document Analysis:
-- Lines: ${lines.filter((l) => l.trim()).length}
+- Lines: ${lines.filter(l => l.trim()).length}
 - Structure: ${
         code.includes(":") ? "Key-value pairs detected" : "List format detected"
       }
@@ -731,12 +731,12 @@ Note: This is a basic validation. For full YAML parsing, consider using a backen
   private executeMarkdown(code: string): string {
     const lines = code.split("\n");
     const analysis = {
-      headers: lines.filter((l) => l.trim().startsWith("#")).length,
+      headers: lines.filter(l => l.trim().startsWith("#")).length,
       links: (code.match(/\[.*?\]\(.*?\)/g) || []).length,
       images: (code.match(/!\[.*?\]\(.*?\)/g) || []).length,
       codeBlocks: (code.match(/```/g) || []).length / 2,
       emphasis: (code.match(/\*.*?\*|_.*?_/g) || []).length,
-      lists: lines.filter((l) => l.trim().match(/^[-*+]\s/)).length,
+      lists: lines.filter(l => l.trim().match(/^[-*+]\s/)).length,
     };
 
     return `Markdown analyzed! ✅
@@ -823,7 +823,7 @@ ${
 
     // Extract includes
     const includeMatches = code.match(/#include\s*[<"]\w+\.?\w*[>"]/g) || [];
-    const includes = includeMatches.map((inc) =>
+    const includes = includeMatches.map(inc =>
       inc.replace(/#include\s*[<"]/, "").replace(/[>"].*/, "")
     );
 

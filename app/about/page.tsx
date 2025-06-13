@@ -75,7 +75,7 @@ export default function About() {
               { name: "JavaScript", desc: "Interactive Web" },
               { name: "Python", desc: "Data & Backend" },
               { name: "JSON", desc: "Data Format" },
-            ].map((lang) => (
+            ].map(lang => (
               <div key={lang.name} className="p-4">
                 <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                   {lang.name}

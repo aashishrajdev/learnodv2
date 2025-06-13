@@ -5,6 +5,7 @@ Learnod is a powerful interactive learning platform built with Next.js that comb
 ## 🚀 Features
 
 ### Core Features
+
 - 🎥 **Integrated YouTube Video Player** - Watch tutorials directly in the platform
 - 💻 **Advanced Monaco Code Editor** - Professional-grade code editor with syntax highlighting
 - 🌓 **Dark/Light Mode** - Toggle between themes for comfortable learning
@@ -13,6 +14,7 @@ Learnod is a powerful interactive learning platform built with Next.js that comb
 - 🎨 **Beautiful UI** - Modern design with Tailwind CSS
 
 ### Enhanced Code Editor Features
+
 - **Multi-language Support**: JavaScript, TypeScript, Python, HTML, JSON, CSS, Markdown
 - **Customizable Font Size**: Adjustable from 10px to 24px
 - **Line Numbers Toggle**: Show/hide line numbers
@@ -65,17 +67,20 @@ my-nextjs-app/
 ### Installation
 
 1. **Clone the repository**:
+
    ```bash
    git clone <your-repo-url>
    cd learnod-nextjs/my-nextjs-app
    ```
 
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Start the development server**:
+
    ```bash
    npm run dev
    ```
@@ -85,12 +90,14 @@ my-nextjs-app/
 ## 📖 Usage
 
 ### Landing Page
+
 - Browse features and supported languages
 - Navigate to learning interface or about page
 
 ### Learning Interface (`/app-page`)
+
 1. **Video Section**: Enter any YouTube URL to watch tutorials
-2. **Code Editor**: 
+2. **Code Editor**:
    - Select from 7+ programming languages
    - Use the Monaco Editor with full VS Code features
    - Adjust font size and toggle line numbers
@@ -98,6 +105,7 @@ my-nextjs-app/
    - Reset to example code anytime
 
 ### Code Execution
+
 - **JavaScript/TypeScript**: Full execution with console output
 - **HTML**: Validation and preview information
 - **JSON**: Parsing validation and object analysis
@@ -106,22 +114,24 @@ my-nextjs-app/
 
 ## 🎯 Supported Languages
 
-| Language   | Execution | Features |
-|------------|-----------|----------|
-| JavaScript | ✅ Full   | Console output, error handling |
-| TypeScript | ✅ Full   | Type checking, console output |
+| Language   | Execution     | Features                        |
+| ---------- | ------------- | ------------------------------- |
+| JavaScript | ✅ Full       | Console output, error handling  |
+| TypeScript | ✅ Full       | Type checking, console output   |
 | HTML       | ⚠️ Validation | Syntax validation, preview info |
-| JSON       | ✅ Parsing | Validation, object analysis |
-| Python     | ❌ Info   | Syntax highlighting only |
-| CSS        | ❌ Editing | Syntax highlighting only |
-| Markdown   | ❌ Editing | Syntax highlighting only |
+| JSON       | ✅ Parsing    | Validation, object analysis     |
+| Python     | ❌ Info       | Syntax highlighting only        |
+| CSS        | ❌ Editing    | Syntax highlighting only        |
+| Markdown   | ❌ Editing    | Syntax highlighting only        |
 
 ## ⚙️ Configuration
 
 ### Theme Customization
+
 The app supports dark/light mode switching with persistent storage. Themes are applied globally using Tailwind's dark mode classes.
 
 ### Editor Settings
+
 - **Font Size**: 10-24px range
 - **Line Numbers**: Toggle on/off
 - **Theme**: Automatically syncs with app theme
@@ -146,6 +156,7 @@ The app supports dark/light mode switching with persistent storage. Themes are a
 ### Customizing Editor
 
 Modify `styles/editor.css` to customize:
+
 - Editor appearance
 - Button styles
 - Responsive behavior
@@ -154,13 +165,16 @@ Modify `styles/editor.css` to customize:
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
+
 ```bash
 npm run build
 # Deploy to Vercel
 ```
 
 ### Other Platforms
+
 The app can be deployed to any platform supporting Next.js:
+
 - Netlify
 - AWS Amplify
 - DigitalOcean App Platform
