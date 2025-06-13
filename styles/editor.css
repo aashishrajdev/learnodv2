@@ -1,0 +1,133 @@
+.editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 500px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.editor-wrapper.dark {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+.editor-container {
+  height: 400px;
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 0 0 8px 8px;
+}
+
+.editor-wrapper.dark .editor-container {
+  border-color: #374151;
+}
+
+/* Monaco Editor Customizations */
+.monaco-editor {
+  font-family: "Fira Code", "Consolas", "Courier New", monospace !important;
+}
+
+.monaco-editor .cursor {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Custom scrollbar for Monaco Editor */
+.monaco-scrollable-element > .scrollbar > .slider {
+  border-radius: 10px;
+}
+
+/* Controls styling */
+.editor-controls {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem;
+}
+
+.editor-controls.dark {
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+}
+
+/* Button animations */
+.editor-button {
+  transition: all 0.2s ease-in-out;
+  transform: translateY(0);
+}
+
+.editor-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.editor-button:active {
+  transform: translateY(0);
+}
+
+/* Loading spinner for run button */
+.loading-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .editor-wrapper {
+    height: 400px;
+  }
+
+  .editor-container {
+    height: 300px;
+  }
+
+  .editor-controls {
+    padding: 0.75rem;
+  }
+
+  .editor-controls .flex {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* Accessibility improvements */
+.editor-wrapper:focus-within {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Custom select styling */
+.editor-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+.dark .editor-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
