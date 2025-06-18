@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import VideoPlayer from "../../components/VideoPlayer";
 import { GoogleGenAI } from "@google/genai";
+import { exampleCode } from "../../components/CodeEditor";
 
 // Dynamically import CodeEditor to avoid SSR issues
 const CodeEditor = dynamic(() => import("../../components/CodeEditor"), {
@@ -19,11 +20,10 @@ const CodeEditor = dynamic(() => import("../../components/CodeEditor"), {
 
 const AppPage = () => {
   const [videoUrl, setVideoUrl] = useState(
-    "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   );
-  const [code, setCode] = useState(
-    '// Welcome to Learnod Code Editor\nconsole.log("Hello, World!");'
-  );
+  const [language, setLanguage] = useState("javascript");
+  const [code, setCode] = useState(exampleCode.javascript);
   const [output, setOutput] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notes, setNotes] = useState("");
@@ -73,7 +73,7 @@ const AppPage = () => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!apiKey) {
       setTranscript(
-        "Gemini API key not found. Please set it in your .env.local file."
+        "Gemini API key not found. Please set it in your .env.local file.",
       );
       setLoadingTranscript(false);
       return;
@@ -119,7 +119,7 @@ Note: I cannot access external websites to view the actual video content.`;
         lastError = err;
         // If 503, retry once
         if (err?.message?.includes("503") && attempt < 2) {
-          await new Promise(res => setTimeout(res, 1200));
+          await new Promise((res) => setTimeout(res, 1200));
           continue;
         }
         break;
@@ -127,11 +127,11 @@ Note: I cannot access external websites to view the actual video content.`;
     }
     if (lastError?.message?.includes("503")) {
       setTranscript(
-        "Gemini service is temporarily unavailable (503). Please try again in a few moments."
+        "Gemini service is temporarily unavailable (503). Please try again in a few moments.",
       );
     } else {
       setTranscript(
-        "Error fetching response: " + (lastError?.message || lastError)
+        "Error fetching response: " + (lastError?.message || lastError),
       );
     }
     setLoadingTranscript(false);
@@ -150,7 +150,7 @@ Note: I cannot access external websites to view the actual video content.`;
               <input
                 type="text"
                 value={videoUrl}
-                onChange={e => setVideoUrl(e.target.value)}
+                onChange={(e) => setVideoUrl(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Enter YouTube URL"
               />
@@ -168,7 +168,7 @@ Note: I cannot access external websites to view the actual video content.`;
                 className="w-full min-h-[120px] p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white mb-2 resize-y"
                 placeholder="Write your notes here... Gemini AI can help analyze and enhance your notes!"
                 value={notes}
-                onChange={e => setNotes(e.target.value)}
+                onChange={(e) => setNotes(e.target.value)}
               />
               <button
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:opacity-60"

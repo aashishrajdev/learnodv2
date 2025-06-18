@@ -75,51 +75,36 @@ export class CodeExecutionService {
     try {
       switch (language) {
         case "javascript":
-        case "typescript":
           return this.executeJavaScript(code);
+        case "typescript":
+          return this.executeJavaScript(code); // Browser only
         case "python":
           return await this.executePython(code);
-        case "html":
-          return this.executeHTML(code);
-        case "css":
-          return this.executeCSS(code);
-        case "json":
-          return this.executeJSON(code);
-        case "xml":
-          return this.executeXML(code);
-        case "yaml":
-          return this.executeYAML(code);
-        case "markdown":
-          return this.executeMarkdown(code);
         case "java":
-          return this.executeJava(code);
+          return await this.executeJava(code);
         case "cpp":
         case "c":
-          return this.executeCPlusPlus(code);
-        case "csharp":
-          return this.executeCSharp(code);
+          return await this.executeCPlusPlus(code);
         case "php":
-          return this.executePHP(code);
-        case "ruby":
-          return this.executeRuby(code);
+          return await this.executePHP(code);
         case "go":
-          return this.executeGo(code);
+          return await this.executeGo(code);
         case "rust":
-          return this.executeRust(code);
-        case "swift":
-          return this.executeSwift(code);
-        case "kotlin":
-          return this.executeKotlin(code);
-        case "scala":
-          return this.executeScala(code);
-        case "sql":
-          return this.executeSQL(code);
-        case "shell":
-          return this.executeShell(code);
-        case "powershell":
-          return this.executePowerShell(code);
+          return await this.executeRust(code);
         default:
-          return `Code execution for ${language} is not supported yet.`;
+          return `❌ Language not supported. 
+
+Supported languages:
+• JavaScript
+• TypeScript
+• Python
+• Java  
+• C/C++
+• PHP
+• Go
+• Rust
+
+Your language: ${language}`;
       }
     } catch (error) {
       return `Error: ${error instanceof Error ? error.message : String(error)}`;
@@ -132,22 +117,22 @@ export class CodeExecutionService {
       log: (...args: any[]) => {
         output.push(
           args
-            .map(arg =>
+            .map((arg) =>
               typeof arg === "object"
                 ? JSON.stringify(arg, null, 2)
-                : String(arg)
+                : String(arg),
             )
-            .join(" ")
+            .join(" "),
         );
       },
       error: (...args: any[]) => {
-        output.push("ERROR: " + args.map(arg => String(arg)).join(" "));
+        output.push("ERROR: " + args.map((arg) => String(arg)).join(" "));
       },
       warn: (...args: any[]) => {
-        output.push("WARNING: " + args.map(arg => String(arg)).join(" "));
+        output.push("WARNING: " + args.map((arg) => String(arg)).join(" "));
       },
       info: (...args: any[]) => {
-        output.push("INFO: " + args.map(arg => String(arg)).join(" "));
+        output.push("INFO: " + args.map((arg) => String(arg)).join(" "));
       },
     };
 
@@ -161,7 +146,7 @@ export class CodeExecutionService {
       // Check for TypeScript-specific syntax that won't work in browser
       if (code.includes(":") && /:\s*\w+\s*=/.test(code)) {
         output.push(
-          "🔷 Note: TypeScript type annotations are stripped during execution."
+          "🔷 Note: TypeScript type annotations are stripped during execution.",
         );
       }
 
@@ -169,15 +154,25 @@ export class CodeExecutionService {
       const tsFeatures = this.detectTypeScriptFeatures(code);
       if (tsFeatures.length > 0) {
         output.push(
-          `🔷 TypeScript features detected: ${tsFeatures.join(", ")}`
+          `🔷 TypeScript features detected: ${tsFeatures.join(", ")}`,
         );
         output.push(
-          "🔷 Some features may not work in browser JavaScript execution."
+          "🔷 Some features may not work in browser JavaScript execution.",
         );
       }
 
-      const func = new Function("console", code);
-      func(customConsole);
+      let func;
+      try {
+        func = new Function("console", code);
+      } catch (err) {
+        return this.formatJavaScriptError(err, code);
+      }
+
+      try {
+        func(customConsole);
+      } catch (err) {
+        return this.formatJavaScriptError(err, code);
+      }
 
       return output.length > 0
         ? output.join("\n")
@@ -305,7 +300,7 @@ ${code}`,
     // Enhanced error handling for common JavaScript/TypeScript issues
     if (errorMessage.includes("Missing initializer")) {
       const match = errorMessage.match(
-        /Missing initializer in const declaration (.+)/
+        /Missing initializer in const declaration (.+)/,
       );
       const context = match ? match[1] : "";
       return `❌ JavaScript/TypeScript Error: Missing initializer in const declaration ${context}
@@ -378,783 +373,252 @@ ${code}
   }
 
   private async executePython(code: string): Promise<string> {
-    try {
-      const pyodide = await this.loadPyodide();
-
-      // Capture Python output
-      pyodide.runPython(`
-import sys
-from io import StringIO
-import contextlib
-
-@contextlib.contextmanager
-def capture_output():
-    old_stdout = sys.stdout
-    old_stderr = sys.stderr
-    stdout = StringIO()
-    stderr = StringIO()
-    try:
-        sys.stdout = stdout
-        sys.stderr = stderr
-        yield stdout, stderr
-    finally:
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
-      `);
-
-      // Execute the user code and capture output
-      const result = pyodide.runPython(`
-with capture_output() as (stdout, stderr):
-    try:
-        exec("""${code.replace(/"/g, '\\"')}""")
-        output = stdout.getvalue()
-        error = stderr.getvalue()
-        if error:
-            result = f"Error: {error}"
-        elif output:
-            result = output
-        else:
-            result = "Code executed successfully (no output)"
-    except Exception as e:
-        result = f"Python Error: {str(e)}"
-        
-result
-      `);
-
-      return result || "Code executed successfully (no output)";
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("Failed to fetch")) {
-        return `Python execution failed: Unable to load Pyodide. Please check your internet connection.
-
-Your Python code:
-${code}
-
-Note: Python execution requires downloading the Pyodide runtime (~30MB) on first use.`;
-      }
-      return `Python execution error: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
-    }
+    return await this.executeWithJudge0(code, 71); // Language ID 71 for Python 3.8.1
   }
-  private executeHTML(code: string): string {
+
+  // Handle interactive code that requires input
+  // Judge0 API execution method
+  private async executeWithJudge0(
+    code: string,
+    languageId: number,
+    stdin?: string,
+    expectedOutput?: string,
+  ): Promise<string> {
     try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(code, "text/html");
-      const errors = doc.querySelectorAll("parsererror");
+      // Use only RapidAPI Judge0
+      const apiUrl =
+        process.env.NEXT_PUBLIC_JUDGE0_API_URL ||
+        "https://judge0-ce.p.rapidapi.com";
+      const apiKey = process.env.NEXT_PUBLIC_JUDGE0_API_KEY;
+      const apiHost =
+        process.env.NEXT_PUBLIC_JUDGE0_API_HOST || "judge0-ce.p.rapidapi.com";
 
-      if (errors.length > 0) {
-        return `❌ HTML parsing errors found:
-${errors[0].textContent}
+      if (!apiKey) {
+        return `❌ Configuration Error: Judge0 API key not configured
 
-Please check your HTML syntax.`;
-      }
+To fix this:
+1. Sign up at https://rapidapi.com/judge0-official/api/judge0-ce
+2. Get your API key
+3. Add NEXT_PUBLIC_JUDGE0_API_KEY=your_api_key to your .env.local file
 
-      // Basic HTML analysis
-      const elements = doc.getElementsByTagName("*");
-      const tags = Array.from(elements).map(el => el.tagName.toLowerCase());
-      const uniqueTags = [...new Set(tags)];
-
-      // Check for semantic elements
-      const semanticTags = [
-        "header",
-        "nav",
-        "main",
-        "section",
-        "article",
-        "aside",
-        "footer",
-      ];
-      const hasSemanticHTML = semanticTags.some(tag => tags.includes(tag));
-
-      // Check for accessibility features
-      const hasAltText = code.includes("alt=");
-      const hasAriaLabels = code.includes("aria-");
-      const hasFormLabels = code.includes("<label");
-
-      // Create a live preview if possible
-      const isCompleteHTML =
-        code.includes("<!DOCTYPE html>") && code.includes("<html>");
-
-      let previewHTML = "";
-      if (isCompleteHTML) {
-        // Create a safe preview
-        previewHTML = `
-
-🖼️ Live Preview Available:
-You can copy this HTML to a .html file and open it in a browser to see the result.
-
-📋 Copy this code to preview:
+Your code:
 ${code}`;
-      } else {
-        // For HTML fragments, wrap them for preview
-        previewHTML = `
-
-🖼️ Fragment Preview (wrap in complete HTML):
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Preview</title>
-    <style>body { font-family: Arial, sans-serif; margin: 20px; }</style>
-</head>
-<body>
-${code}
-</body>
-</html>`;
       }
 
-      return `✅ HTML is valid!
-
-📊 Document Analysis:
-- Total elements: ${elements.length}
-- Unique tags: ${uniqueTags.join(", ")}
-- Document title: ${doc.title || "No title set"}
-- ${hasSemanticHTML ? "✅" : "❌"} Semantic HTML5 elements
-- ${hasAltText ? "✅" : "❌"} Image alt attributes
-- ${hasAriaLabels ? "✅" : "❌"} ARIA accessibility labels
-- ${hasFormLabels ? "✅" : "❌"} Form labels
-
-💡 Accessibility Score: ${
-        [hasAltText, hasAriaLabels, hasFormLabels].filter(Boolean).length
-      }/3${previewHTML}`;
-    } catch (error) {
-      return `❌ HTML validation error: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
-    }
-  }
-
-  private executeCSS(code: string): string {
-    try {
-      // Basic CSS validation by creating a style element
-      const style = document.createElement("style");
-      style.textContent = code;
-      document.head.appendChild(style);
-
-      // Check if CSS rules were parsed
-      const rules = style.sheet?.cssRules || [];
-      document.head.removeChild(style);
-
-      // Analyze CSS
-      const selectors: string[] = [];
-      const properties: string[] = [];
-      let mediaQueries = 0;
-      let keyframes = 0;
-
-      Array.from(rules).forEach(rule => {
-        if (rule instanceof CSSStyleRule) {
-          selectors.push(rule.selectorText);
-          Array.from(rule.style).forEach(prop => {
-            if (!properties.includes(prop)) {
-              properties.push(prop);
-            }
-          });
-        } else if (rule instanceof CSSMediaRule) {
-          mediaQueries++;
-        } else if (rule instanceof CSSKeyframesRule) {
-          keyframes++;
-        }
+      // Execute using RapidAPI only
+      return await this.tryJudge0Execution(code, languageId, {
+        apiUrl,
+        apiKey: apiKey || null,
+        apiHost,
+        isRapidAPI: true,
+        stdin,
+        expectedOutput,
       });
-
-      // Check for modern CSS features
-      const hasFlexbox =
-        code.includes("display: flex") || code.includes("display:flex");
-      const hasGrid =
-        code.includes("display: grid") || code.includes("display:grid");
-      const hasCustomProps = code.includes("--") && code.includes("var(");
-      const hasAnimations =
-        code.includes("@keyframes") || code.includes("animation:");
-
-      // Create a demo preview
-      const demoHTML = `
-
-🎨 CSS Preview Demo:
-To see your styles in action, create an HTML file with:
-
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-${code}
-    </style>
-</head>
-<body>
-    <div class="demo-content">
-        <h1>Demo Heading</h1>
-        <p>Sample paragraph text to show your styling.</p>
-        <button>Sample Button</button>
-        <div class="box">Sample Box</div>
-    </div>
-</body>
-</html>`;
-
-      return `✅ CSS is valid!
-
-📊 CSS Analysis:
-- Rules parsed: ${rules.length}
-- Selectors: ${selectors.length} (${selectors.slice(0, 5).join(", ")}${
-        selectors.length > 5 ? "..." : ""
-      })
-- Properties used: ${properties.length} (${properties.slice(0, 8).join(", ")}${
-        properties.length > 8 ? "..." : ""
-      })
-- Media queries: ${mediaQueries}
-- Animations/Keyframes: ${keyframes}
-
-🚀 Modern CSS Features:
-- ${hasFlexbox ? "✅" : "❌"} Flexbox layout
-- ${hasGrid ? "✅" : "❌"} CSS Grid layout  
-- ${hasCustomProps ? "✅" : "❌"} CSS Custom Properties
-- ${hasAnimations ? "✅" : "❌"} CSS Animations
-
-💡 CSS Quality Score: ${
-        [hasFlexbox, hasGrid, hasCustomProps, hasAnimations].filter(Boolean)
-          .length
-      }/4${demoHTML}`;
     } catch (error) {
-      return `❌ CSS validation error: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
+      if (error instanceof Error && error.message.includes("fetch")) {
+        return `❌ Network Error: Unable to connect to Judge0 RapidAPI
+
+Error: ${error.message}
+
+Please check:
+1. Your internet connection
+2. API key is valid
+3. Try again in a few minutes
+
+Your code:
+${code}`;
+      }
+      return `❌ Execution Error: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
 
-  private executeJSON(code: string): string {
-    try {
-      const parsed = JSON.parse(code);
-
-      const analyze = (obj: any, depth = 0): string => {
-        if (depth > 3) return "[Too deep to analyze]";
-
-        if (Array.isArray(obj)) {
-          return `Array(${obj.length})`;
-        } else if (obj && typeof obj === "object") {
-          const keys = Object.keys(obj);
-          return `Object{${keys.slice(0, 5).join(", ")}${
-            keys.length > 5 ? "..." : ""
-          }}`;
-        } else {
-          return `${typeof obj}: ${obj}`;
-        }
-      };
-
-      return `JSON is valid! ✅
-
-Parsed object:
-${JSON.stringify(parsed, null, 2)}
-
-Analysis:
-- Type: ${Array.isArray(parsed) ? "Array" : typeof parsed}
-- ${
-        Array.isArray(parsed)
-          ? `Length: ${parsed.length}`
-          : `Keys: ${Object.keys(parsed).length}`
-      }
-- Structure: ${analyze(parsed)}`;
-    } catch (error) {
-      return `JSON parsing error: ${
-        error instanceof Error ? error.message : String(error)
-      }
-
-Tip: Check for:
-- Missing quotes around strings
-- Trailing commas
-- Unescaped quotes in strings`;
-    }
-  }
-
-  private executeXML(code: string): string {
-    try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(code, "text/xml");
-      const errors = doc.querySelectorAll("parsererror");
-
-      if (errors.length > 0) {
-        return `XML parsing errors found:
-${errors[0].textContent}`;
-      }
-
-      const elements = doc.getElementsByTagName("*");
-      const rootElement = doc.documentElement;
-
-      return `XML is valid! ✅
-
-Document Analysis:
-- Root element: ${rootElement?.tagName || "None"}
-- Total elements: ${elements.length}
-- Namespaces: ${rootElement?.namespaceURI ? "Present" : "None"}
-
-XML structure is well-formed and ready to use!`;
-    } catch (error) {
-      return `XML validation error: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
-    }
-  }
-
-  private executeYAML(code: string): string {
-    try {
-      // Basic YAML validation (simplified)
-      const lines = code.split("\n");
-      let indentationValid = true;
-      let currentIndent = 0;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.trim() === "") continue;
-
-        const indent = line.length - line.trimStart().length;
-        if (indent % 2 !== 0) {
-          indentationValid = false;
-          break;
-        }
-      }
-
-      if (!indentationValid) {
-        return "YAML validation warning: Inconsistent indentation detected (should be 2 spaces)";
-      }
-
-      return `YAML appears valid! ✅
-
-Document Analysis:
-- Lines: ${lines.filter(l => l.trim()).length}
-- Structure: ${
-        code.includes(":") ? "Key-value pairs detected" : "List format detected"
-      }
-
-Note: This is a basic validation. For full YAML parsing, consider using a backend service.`;
-    } catch (error) {
-      return `YAML validation error: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
-    }
-  }
-
-  private executeMarkdown(code: string): string {
-    const lines = code.split("\n");
-    const analysis = {
-      headers: lines.filter(l => l.trim().startsWith("#")).length,
-      links: (code.match(/\[.*?\]\(.*?\)/g) || []).length,
-      images: (code.match(/!\[.*?\]\(.*?\)/g) || []).length,
-      codeBlocks: (code.match(/```/g) || []).length / 2,
-      emphasis: (code.match(/\*.*?\*|_.*?_/g) || []).length,
-      lists: lines.filter(l => l.trim().match(/^[-*+]\s/)).length,
+  private async tryJudge0Execution(
+    code: string,
+    languageId: number,
+    config: {
+      apiUrl: string;
+      apiKey: string | null;
+      apiHost: string | null;
+      isRapidAPI: boolean;
+      stdin?: string;
+      expectedOutput?: string;
+    },
+  ): Promise<string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
     };
 
-    return `Markdown analyzed! ✅
-
-Content Analysis:
-- Headers: ${analysis.headers}
-- Links: ${analysis.links}
-- Images: ${analysis.images}
-- Code blocks: ${Math.floor(analysis.codeBlocks)}
-- Emphasized text: ${analysis.emphasis}
-- List items: ${analysis.lists}
-- Total lines: ${lines.length}
-
-Your Markdown is ready for rendering!`;
-  }
-  // Compiled language implementations (information only)
-  private executeJava(code: string): string {
-    // Analyze the Java code structure
-    const hasClass = code.includes("public class");
-    const hasMain = code.includes("public static void main");
-    const hasOutput =
-      code.includes("System.out.println") || code.includes("System.out.print");
-    const hasImports = code.includes("import ");
-    const hasPackage = code.includes("package ");
-
-    // Extract class name if present
-    const classMatch = code.match(/public\s+class\s+(\w+)/);
-    const className = classMatch ? classMatch[1] : "Unknown";
-
-    return `☕ Java Analysis Complete
-
-📁 Your Java Code:
-${code}
-
-🔍 Code Analysis:
-- ${hasClass ? "✅" : "❌"} Class definition ${hasClass ? `(${className})` : ""}
-- ${hasMain ? "✅" : "❌"} Main method ${
-      hasMain ? "(Entry point found)" : "(No entry point)"
-    }
-- ${hasOutput ? "✅" : "❌"} Output statements ${
-      hasOutput ? "(Console output ready)" : ""
-    }
-- ${hasImports ? "✅" : "❌"} Import statements ${
-      hasImports ? "(External libraries used)" : ""
-    }
-- ${hasPackage ? "✅" : "❌"} Package declaration ${
-      hasPackage ? "(Organized structure)" : ""
+    if (config.isRapidAPI && config.apiKey && config.apiHost) {
+      headers["X-RapidAPI-Key"] = config.apiKey;
+      headers["X-RapidAPI-Host"] = config.apiHost;
     }
 
-🚀 To Execute Java Code:
-1. 📦 Java Development Kit (JDK 8+)
-2. 🔧 Compilation: javac ${className}.java
-3. ▶️ Execution: java ${className}
-4. 🌐 Online alternatives: 
-   • repl.it/languages/java
-   • onlinegdb.com/online_java_compiler
-   • tutorialspoint.com/compile_java_online.php
-
-💡 Quick Setup Guide:
-• Download OpenJDK or Oracle JDK
-• Set JAVA_HOME environment variable
-• Add Java bin directory to PATH
-• Compile with: javac YourFile.java
-• Run with: java YourClass
-
-${
-  hasClass && hasMain
-    ? "✅ Your code structure looks ready for compilation!"
-    : "⚠️ Make sure you have a public class with a main method."
-}`;
-  }
-  private executeCPlusPlus(code: string): string {
-    // Analyze the C++ code structure
-    const hasIncludes = code.includes("#include");
-    const hasMain = code.includes("int main") || code.includes("void main");
-    const hasOutput =
-      code.includes("std::cout") ||
-      code.includes("cout") ||
-      code.includes("printf");
-    const hasNamespace =
-      code.includes("using namespace") || code.includes("std::");
-    const hasClasses = code.includes("class ") || code.includes("struct ");
-    const hasFunctions = code.match(/\w+\s+\w+\s*\([^)]*\)\s*\{/) !== null;
-
-    // Extract includes
-    const includeMatches = code.match(/#include\s*[<"]\w+\.?\w*[>"]/g) || [];
-    const includes = includeMatches.map(inc =>
-      inc.replace(/#include\s*[<"]/, "").replace(/[>"].*/, "")
-    );
-
-    return `⚡ C++ Analysis Complete
-
-📁 Your C++ Code:
-${code}
-
-🔍 Code Analysis:
-- ${hasIncludes ? "✅" : "❌"} Include statements ${
-      hasIncludes ? `(${includes.join(", ")})` : ""
-    }
-- ${hasMain ? "✅" : "❌"} Main function ${
-      hasMain ? "(Entry point found)" : "(No entry point)"
-    }
-- ${hasOutput ? "✅" : "❌"} Output statements ${
-      hasOutput ? "(Console output ready)" : ""
-    }
-- ${hasNamespace ? "✅" : "❌"} Standard namespace ${
-      hasNamespace ? "(std namespace used)" : ""
-    }
-- ${hasClasses ? "✅" : "❌"} Classes/Structs ${
-      hasClasses ? "(OOP detected)" : ""
-    }
-- ${hasFunctions ? "✅" : "❌"} Custom functions ${
-      hasFunctions ? "(Functions defined)" : ""
+    // Always use base64 encoding for Judge0
+    function toBase64(str: string) {
+      if (typeof window !== "undefined" && window.btoa) {
+        return window.btoa(unescape(encodeURIComponent(str)));
+      } else {
+        return Buffer.from(str, "utf-8").toString("base64");
+      }
     }
 
-🛠️ Compilation Options:
-1. 🔧 GCC: g++ -o program program.cpp
-2. 🔧 Clang: clang++ -o program program.cpp  
-3. 🔧 MSVC: cl program.cpp
-4. 🌐 Online compilers:
-   • repl.it/languages/cpp
-   • onlinegdb.com/online_c++_compiler
-   • coliru.stacked-crooked.com
+    // Prepare submission payload according to Judge0 API specs
+    const submissionData: any = {
+      source_code: toBase64(code),
+      language_id: languageId,
+      stdin: config.stdin ? toBase64(config.stdin) : "",
+    };
 
-🚀 Quick Setup Guide:
-• Windows: Install MinGW-w64 or Visual Studio
-• Linux: sudo apt install g++ (Ubuntu/Debian)
-• macOS: xcode-select --install
-• Compile: g++ -std=c++17 -o myprogram myfile.cpp
-• Run: ./myprogram (Linux/Mac) or myprogram.exe (Windows)
+    // Special handling for Java public class name
+    if (languageId === 62) {
+      const match = code.match(/public\s+class\s+([A-Za-z_][A-Za-z0-9_]*)/);
+      if (match && match[1]) {
+        submissionData.file_name = `${match[1]}.java`;
+      }
+    }
 
-💡 Compilation flags you might need:
-• -std=c++17 (for modern C++ features)
-• -Wall (enable all warnings)
-• -O2 (optimization)
-• -g (debug information)
+    // Judge0 API execution
+    try {
+      // Submit code for execution with base64_encoded=true for all requests
+      const submitResponse = await fetch(
+        `${config.apiUrl}/submissions?base64_encoded=true&wait=true`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(submissionData),
+        },
+      );
 
-${
-  hasMain && hasOutput
-    ? "✅ Your code structure looks ready for compilation!"
-    : "⚠️ Make sure you have a main function and output statements."
-}`;
+      let result = await submitResponse.json();
+
+      // If only a token is returned, poll for the result
+      if (result && result.token && !result.status) {
+        let pollCount = 0;
+        const maxPolls = 10;
+        const pollDelay = 1000; // 1 second
+        while (pollCount < maxPolls) {
+          await new Promise((res) => setTimeout(res, pollDelay));
+          const pollRes = await fetch(
+            `${config.apiUrl}/submissions/${result.token}?base64_encoded=true`,
+            { headers },
+          );
+          const pollJson = await pollRes.json();
+          if (pollJson.status && typeof pollJson.status.id === "number") {
+            result = pollJson;
+            break;
+          }
+          pollCount++;
+        }
+      }
+
+      // Check for valid Judge0 response
+      if (!result || !result.status || typeof result.status.id !== "number") {
+        return `❌ Judge0 API Error: Malformed response.\nRaw response: ${JSON.stringify(result, null, 2)}`;
+      }
+
+      // Check for compilation or runtime errors
+      if (result.status.id !== 3) {
+        return this.handleJudge0Error(result, code);
+      }
+
+      // Decode and return the output
+      return this.decodeJudge0Output(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Execution Error: ${error.message}`);
+      } else {
+        throw new Error(`Execution Error: ${String(error)}`);
+      }
+    }
   }
 
-  private executeCSharp(code: string): string {
-    return `C# compilation and execution requires a backend service.
+  private handleJudge0Error(result: any, code: string): string {
+    const errorMessage = result.stderr || result.compile_output || "";
 
-Your C# code:
-${code}
+    // Enhanced error messages for Judge0 errors
+    if (result.status.id === 5) {
+      return `❌ Compilation Error: ${errorMessage}
 
-To run C# code, you would need:
-1. .NET compiler and runtime
-2. A backend service that can compile and execute C#
-3. Or use an online C# compiler service
+🔧 Common fixes:
+• Check for syntax errors
+• Ensure all variables are defined
+• Check for missing imports or includes
 
-Features detected in your code:
-- ${code.includes("using") ? "✅ Using statements" : "❌ No using statements"}
-- ${code.includes("class") ? "✅ Class definition" : "❌ No class definition"}
-- ${code.includes("static void Main") ? "✅ Main method" : "❌ No main method"}
-- ${
-      code.includes("Console.WriteLine")
-        ? "✅ Output statements"
-        : "❌ No output statements"
-    }`;
+📝 Your code:
+${code}`;
+    } else if (result.status.id === 6) {
+      return `❌ Runtime Error: ${errorMessage}
+
+🔧 Common reasons:
+• Invalid memory access
+• Division by zero
+• Infinite recursion
+
+📝 Your code:
+${code}`;
+    } else {
+      return `❌ Error: ${errorMessage}
+
+📝 Your code:
+${code}`;
+    }
   }
 
-  private executePHP(code: string): string {
-    return `PHP execution requires a backend service with PHP interpreter.
+  private decodeJudge0Output(result: any): string {
+    // Decode base64 output from Judge0 (browser and Node)
+    const decodeBase64 = (str: string) => {
+      if (!str) return "";
+      if (typeof window !== "undefined" && window.atob) {
+        try {
+          return decodeURIComponent(escape(window.atob(str)));
+        } catch {
+          return window.atob(str);
+        }
+      } else if (typeof Buffer !== "undefined") {
+        return Buffer.from(str, "base64").toString("utf-8");
+      } else {
+        return str;
+      }
+    };
 
-Your PHP code:
-${code}
+    const output: string[] = [];
 
-To run PHP code, you would need:
-1. PHP interpreter
-2. A backend service that can execute PHP
-3. Or use an online PHP runner service
-
-Features detected in your code:
-- ${code.includes("<?php") ? "✅ PHP opening tag" : "❌ No PHP opening tag"}
-- ${
-      code.includes("echo") || code.includes("print")
-        ? "✅ Output statements"
-        : "❌ No output statements"
+    if (result.stdout) {
+      output.push("Output:\n" + decodeBase64(result.stdout));
     }
-- ${
-      code.includes("function")
-        ? "✅ Function definitions"
-        : "❌ No function definitions"
-    }`;
+
+    if (result.stderr) {
+      output.push("Errors:\n" + decodeBase64(result.stderr));
+    }
+
+    if (result.execution_time) {
+      output.push(`\nExecution Time: ${result.execution_time} seconds`);
+    }
+
+    if (result.memory) {
+      output.push(`Memory Usage: ${result.memory} KB`);
+    }
+
+    return output.join("\n");
   }
 
-  private executeRuby(code: string): string {
-    return `Ruby execution requires a backend service with Ruby interpreter.
-
-Your Ruby code:
-${code}
-
-To run Ruby code, you would need:
-1. Ruby interpreter
-2. A backend service that can execute Ruby
-3. Or use an online Ruby runner service
-
-Features detected in your code:
-- ${
-      code.includes("puts") || code.includes("print")
-        ? "✅ Output statements"
-        : "❌ No output statements"
-    }
-- ${
-      code.includes("def ")
-        ? "✅ Method definitions"
-        : "❌ No method definitions"
-    }
-- ${
-      code.includes("class ")
-        ? "✅ Class definitions"
-        : "❌ No class definitions"
-    }`;
+  // Add stubs for missing language methods if not present
+  private async executeJava(code: string): Promise<string> {
+    return await this.executeWithJudge0(code, 62);
   }
-
-  private executeGo(code: string): string {
-    return `Go compilation and execution requires a backend service.
-
-Your Go code:
-${code}
-
-To run Go code, you would need:
-1. Go compiler and runtime
-2. A backend service that can compile and execute Go
-3. Or use an online Go playground
-
-Features detected in your code:
-- ${code.includes("package main") ? "✅ Main package" : "❌ No main package"}
-- ${
-      code.includes("import")
-        ? "✅ Import statements"
-        : "❌ No import statements"
-    }
-- ${code.includes("func main") ? "✅ Main function" : "❌ No main function"}
-- ${
-      code.includes("fmt.Print")
-        ? "✅ Output statements"
-        : "❌ No output statements"
-    }`;
+  private async executeCPlusPlus(code: string): Promise<string> {
+    return await this.executeWithJudge0(code, 54);
   }
-
-  private executeRust(code: string): string {
-    return `Rust compilation and execution requires a backend service.
-
-Your Rust code:
-${code}
-
-To run Rust code, you would need:
-1. Rust compiler (rustc) and cargo
-2. A backend service that can compile and execute Rust
-3. Or use an online Rust playground
-
-Features detected in your code:
-- ${code.includes("fn main") ? "✅ Main function" : "❌ No main function"}
-- ${code.includes("println!") ? "✅ Print macro" : "❌ No print macro"}
-- ${code.includes("use ") ? "✅ Use statements" : "❌ No use statements"}`;
+  private async executeTypeScript(code: string): Promise<string> {
+    return await this.executeWithJudge0(code, 74);
   }
-
-  private executeSwift(code: string): string {
-    return `Swift compilation and execution requires a backend service.
-
-Your Swift code:
-${code}
-
-To run Swift code, you would need:
-1. Swift compiler and runtime
-2. A backend service that can compile and execute Swift
-3. Or use an online Swift playground
-
-Features detected in your code:
-- ${
-      code.includes("import")
-        ? "✅ Import statements"
-        : "❌ No import statements"
-    }
-- ${code.includes("print(") ? "✅ Print statements" : "❌ No print statements"}
-- ${
-      code.includes("func ")
-        ? "✅ Function definitions"
-        : "❌ No function definitions"
-    }`;
+  private async executePHP(code: string): Promise<string> {
+    return await this.executeWithJudge0(code, 68);
   }
-
-  private executeKotlin(code: string): string {
-    return `Kotlin compilation and execution requires a backend service.
-
-Your Kotlin code:
-${code}
-
-To run Kotlin code, you would need:
-1. Kotlin compiler and JVM
-2. A backend service that can compile and execute Kotlin
-3. Or use an online Kotlin playground
-
-Features detected in your code:
-- ${code.includes("fun main") ? "✅ Main function" : "❌ No main function"}
-- ${
-      code.includes("println(")
-        ? "✅ Print statements"
-        : "❌ No print statements"
-    }
-- ${
-      code.includes("import ")
-        ? "✅ Import statements"
-        : "❌ No import statements"
-    }`;
+  private async executeGo(code: string): Promise<string> {
+    return await this.executeWithJudge0(code, 60);
   }
-
-  private executeScala(code: string): string {
-    return `Scala compilation and execution requires a backend service.
-
-Your Scala code:
-${code}
-
-To run Scala code, you would need:
-1. Scala compiler and JVM
-2. A backend service that can compile and execute Scala
-3. Or use an online Scala playground
-
-Features detected in your code:
-- ${
-      code.includes("object") && code.includes("extends App")
-        ? "✅ App object"
-        : "❌ No App object"
-    }
-- ${code.includes("def main") ? "✅ Main method" : "❌ No main method"}
-- ${
-      code.includes("println(")
-        ? "✅ Print statements"
-        : "❌ No print statements"
-    }`;
-  }
-
-  private executeSQL(code: string): string {
-    return `SQL execution requires a database connection and backend service.
-
-Your SQL code:
-${code}
-
-To run SQL code, you would need:
-1. Database server (MySQL, PostgreSQL, SQLite, etc.)
-2. A backend service that can execute SQL queries
-3. Or use an online SQL runner with sample data
-
-Query type detected:
-- ${
-      code.toUpperCase().includes("SELECT")
-        ? "✅ SELECT query"
-        : "❌ No SELECT query"
-    }
-- ${
-      code.toUpperCase().includes("INSERT")
-        ? "✅ INSERT query"
-        : "❌ No INSERT query"
-    }
-- ${
-      code.toUpperCase().includes("UPDATE")
-        ? "✅ UPDATE query"
-        : "❌ No UPDATE query"
-    }
-- ${
-      code.toUpperCase().includes("DELETE")
-        ? "✅ DELETE query"
-        : "❌ No DELETE query"
-    }
-- ${
-      code.toUpperCase().includes("CREATE")
-        ? "✅ CREATE statement"
-        : "❌ No CREATE statement"
-    }`;
-  }
-
-  private executeShell(code: string): string {
-    return `Shell script execution requires a backend service with shell access.
-
-Your Shell script:
-${code}
-
-To run shell scripts, you would need:
-1. Shell environment (bash, zsh, etc.)
-2. A backend service that can execute shell commands safely
-3. Proper security measures for command execution
-
-Commands detected:
-- ${code.includes("echo") ? "✅ Echo commands" : "❌ No echo commands"}
-- ${code.includes("ls") ? "✅ List commands" : "❌ No list commands"}
-- ${
-      code.includes("cd")
-        ? "✅ Directory navigation"
-        : "❌ No directory navigation"
-    }
-- ${code.includes("|") ? "✅ Pipes" : "❌ No pipes"}`;
-  }
-
-  private executePowerShell(code: string): string {
-    return `PowerShell execution requires a backend service with PowerShell access.
-
-Your PowerShell script:
-${code}
-
-To run PowerShell scripts, you would need:
-1. PowerShell environment
-2. A backend service that can execute PowerShell safely
-3. Proper security measures for script execution
-
-Features detected:
-- ${
-      code.includes("Write-Host") || code.includes("Write-Output")
-        ? "✅ Output commands"
-        : "❌ No output commands"
-    }
-- ${code.includes("Get-") ? "✅ Get cmdlets" : "❌ No Get cmdlets"}
-- ${code.includes("Set-") ? "✅ Set cmdlets" : "❌ No Set cmdlets"}
-- ${code.includes("|") ? "✅ Pipeline" : "❌ No pipeline"}`;
+  private async executeRust(code: string): Promise<string> {
+    return await this.executeWithJudge0(code, 73);
   }
 }

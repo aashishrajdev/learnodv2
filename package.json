@@ -1,6 +1,6 @@
 {
   "name": "learnod",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
   "dependencies": {
     "@google/genai": "^1.4.0",
@@ -24,9 +24,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "lint": "next lint"
   },
   "eslintConfig": {
     "extends": "next/core-web-vitals"
