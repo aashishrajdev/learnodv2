@@ -92,19 +92,7 @@ export class CodeExecutionService {
         case "rust":
           return await this.executeRust(code);
         default:
-          return `❌ Language not supported. 
-
-Supported languages:
-• JavaScript
-• TypeScript
-• Python
-• Java  
-• C/C++
-• PHP
-• Go
-• Rust
-
-Your language: ${language}`;
+          return `See the live preview for ${language}`;
       }
     } catch (error) {
       return `Error: ${error instanceof Error ? error.message : String(error)}`;
@@ -112,9 +100,20 @@ Your language: ${language}`;
   }
   private executeJavaScript(code: string): string {
     const output: string[] = [];
+    const logs: string[] = [];
+    const start = performance.now();
 
     const customConsole = {
       log: (...args: any[]) => {
+        logs.push(
+          `console.log(${args
+            .map((arg) =>
+              typeof arg === "object"
+                ? JSON.stringify(arg, null, 2)
+                : JSON.stringify(arg),
+            )
+            .join(", ")})`,
+        );
         output.push(
           args
             .map((arg) =>
@@ -126,12 +125,21 @@ Your language: ${language}`;
         );
       },
       error: (...args: any[]) => {
+        logs.push(
+          `console.error(${args.map((arg) => JSON.stringify(arg)).join(", ")})`,
+        );
         output.push("ERROR: " + args.map((arg) => String(arg)).join(" "));
       },
       warn: (...args: any[]) => {
+        logs.push(
+          `console.warn(${args.map((arg) => JSON.stringify(arg)).join(", ")})`,
+        );
         output.push("WARNING: " + args.map((arg) => String(arg)).join(" "));
       },
       info: (...args: any[]) => {
+        logs.push(
+          `console.info(${args.map((arg) => JSON.stringify(arg)).join(", ")})`,
+        );
         output.push("INFO: " + args.map((arg) => String(arg)).join(" "));
       },
     };
@@ -146,18 +154,16 @@ Your language: ${language}`;
       // Check for TypeScript-specific syntax that won't work in browser
       if (code.includes(":") && /:\s*\w+\s*=/.test(code)) {
         output.push(
-          "🔷 Note: TypeScript type annotations are stripped during execution.",
+          "Note: TypeScript type annotations are stripped during execution.",
         );
       }
 
       // Advanced TypeScript syntax detection
       const tsFeatures = this.detectTypeScriptFeatures(code);
       if (tsFeatures.length > 0) {
+        output.push(`TypeScript features detected: ${tsFeatures.join(", ")}`);
         output.push(
-          `🔷 TypeScript features detected: ${tsFeatures.join(", ")}`,
-        );
-        output.push(
-          "🔷 Some features may not work in browser JavaScript execution.",
+          "Some features may not work in browser JavaScript execution.",
         );
       }
 
@@ -174,9 +180,19 @@ Your language: ${language}`;
         return this.formatJavaScriptError(err, code);
       }
 
-      return output.length > 0
-        ? output.join("\n")
-        : "✅ Code executed successfully (no output)";
+      const end = performance.now();
+      const duration = (end - start).toFixed(2);
+
+      let result = "";
+      if (logs.length > 0) {
+        result += logs.join("\n") + "\n";
+      }
+      result +=
+        output.length > 0
+          ? output.join("\n")
+          : "Code executed successfully (no output)";
+      result += `\n\n---\nExecution stats:\nTime: ${duration} ms`;
+      return result;
     } catch (error) {
       return this.formatJavaScriptError(error, code);
     }

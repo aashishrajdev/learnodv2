@@ -23,6 +23,8 @@ export function getSuggestedFilename(language: string): string {
     php: ".php",
     go: ".go",
     rust: ".rs",
+    javascript: ".js",
+    web: ".html", // default for web, but handled specially in UI
   };
 
   const extension = extensions[language] || ".txt";

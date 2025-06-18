@@ -206,16 +206,7 @@ Note: I cannot access external websites to view the actual video content.`;
               />
             </div>
             {/* Output Section - always below, scrollable if large, never pushes editor up */}
-            {output && (
-              <div className="bg-gray-100 dark:bg-gray-700 rounded-lg shadow-inner p-4 mt-2 max-h-60 overflow-y-auto">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 ">
-                  Output
-                </h3>
-                <pre className="p-2 rounded-md text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap overflow-x-auto">
-                  {output}
-                </pre>
-              </div>
-            )}
+            {/* Remove duplicate output rendering, since CodeEditor already renders output for non-web languages */}
           </div>
         </div>
       </div>

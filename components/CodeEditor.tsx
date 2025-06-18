@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import { CodeExecutionService } from "../services/CodeExecutionService";
 import { languages } from "../constants/languages";
 import { saveCodeToFile, getSuggestedFilename } from "../utils/fileUtils";
+import { saveFilesAsZip } from "../utils/zipUtils";
 import "../styles/editor.css";
+import TechIcon from "./TechIcon";
 
 // Import Prettier for code formatting
 import * as prettier from "prettier";
@@ -383,6 +385,28 @@ function add(a, b) {
   return a + b;
 }
 console.log('10 + 20 =', add(10, 20));`,
+
+  web: `<!-- Web Example: HTML, CSS, JS -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Web Preview</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 2rem; }
+    h1 { color: #0070f3; }
+    .btn { background: #0070f3; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Hello, Web!</h1>
+  <button class="btn" onclick="alert('Button clicked!')">Click Me</button>
+  <script>
+    // You can write JavaScript here
+    console.log('Web preview loaded!');
+  </script>
+</body>
+</html>`,
 };
 
 const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -393,10 +417,41 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   onLanguageChange,
   isDarkMode,
 }) => {
-  const [language, setLanguage] = useState<string>("python");
+  const [language, setLanguage] = useState<string>("javascript");
   const [isExecuting, setIsExecuting] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
+
+  // Live preview state for web
+  const [isWebFullscreen, setIsWebFullscreen] = useState(false);
+  const previewRef = React.useRef<HTMLIFrameElement>(null);
+
+  // Output state for non-web languages
+  const [output, setOutput] = useState<string>("");
+
+  // Additional states for multi-file editing in web language
+  const [htmlCode, setHtmlCode] = useState<string>("");
+  const [cssCode, setCssCode] = useState<string>("");
+  const [jsCode, setJsCode] = useState<string>("");
+
+  // Web language: separate HTML, CSS, JS editors
+  const [webHtml, setWebHtml] = useState<string>(
+    `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Live Web Preview</title>\n</head>\n<body>\n  <h1>Hello, Web!</h1>\n  <button class=\"btn\" onclick=\"alert('Button clicked!')\">Click Me</button>\n</body>\n</html>`,
+  );
+  const [webCss, setWebCss] = useState<string>(
+    `body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 2rem; }\nh1 { color: #0070f3; }\n.btn { background: #0070f3; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }`,
+  );
+  const [webJs, setWebJs] = useState<string>(
+    `// You can write JavaScript here\nconsole.log('Web preview loaded!');`,
+  );
+
+  // For web editor: which file is open ("html" | "css" | "js")
+  const [webActiveFile, setWebActiveFile] = useState<"html" | "css" | "js">(
+    "html",
+  );
+
+  // Combine for preview
+  const webPreview = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Live Web Preview</title>\n  <style>\n${webCss}\n  </style>\n</head>\n<body>\n${webHtml.match(/<body[\s\S]*?>([\s\S]*)<\/body>/i)?.[1] || ""}\n  <script>\n${webJs}\n  <\/script>\n</body>\n</html>`;
 
   // Map our language IDs to Monaco Editor language IDs
   const getMonacoLanguage = (lang: string): string => {
@@ -436,6 +491,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
   const handleRunCode = async () => {
     if (!code.trim()) {
+      setOutput("Please enter some code to execute.");
       onOutputChange?.("Please enter some code to execute.");
       return;
     }
@@ -443,12 +499,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     setIsExecuting(true);
     try {
       const executionService = CodeExecutionService.getInstance();
-      const output = await executionService.executeCode(code, language);
-      onOutputChange?.(output);
+      const result = await executionService.executeCode(code, language);
+      setOutput(result);
+      onOutputChange?.(result);
     } catch (error) {
-      onOutputChange?.(
-        `Error: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      const errMsg = `Error: ${error instanceof Error ? error.message : String(error)}`;
+      setOutput(errMsg);
+      onOutputChange?.(errMsg);
     } finally {
       setIsExecuting(false);
     }
@@ -488,23 +545,66 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   };
 
+  // Save dialog state
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveFileName, setSaveFileName] = useState("");
+  const [saveTarget, setSaveTarget] = useState<string>(""); // for web: html, css, js, zip
+
+  // Save handler for all languages
   const handleSaveCode = () => {
-    const filename = getSuggestedFilename(language);
-    saveCodeToFile(code, filename);
+    if (language === "web") {
+      setSaveDialogOpen(true);
+      setSaveTarget("");
+      setSaveFileName("");
+    } else {
+      setSaveDialogOpen(true);
+      setSaveFileName(getSuggestedFilename(language));
+      setSaveTarget("single");
+    }
   };
 
-  const getLanguageIcon = (lang: string) => {
-    const icons: Record<string, string> = {
-      python: "🐍",
-      java: "☕",
-      c: "🔧",
-      cpp: "⚡",
-      typescript: "🔷",
-      php: "🐘",
-      go: "🐹",
-      rust: "🦀",
-    };
-    return icons[lang] || "📝";
+  // Actually save the file(s)
+  const handleSaveConfirm = async () => {
+    if (language === "web") {
+      if (saveTarget === "html") {
+        let name = saveFileName || "index.html";
+        if (!name.endsWith(".html")) name += ".html";
+        saveCodeToFile(webHtml, name);
+      } else if (saveTarget === "css") {
+        let name = saveFileName || "style.css";
+        if (!name.endsWith(".css")) name += ".css";
+        saveCodeToFile(webCss, name);
+      } else if (saveTarget === "js") {
+        let name = saveFileName || "script.js";
+        if (!name.endsWith(".js")) name += ".js";
+        saveCodeToFile(webJs, name);
+      } else if (saveTarget === "zip") {
+        const base = saveFileName || "web-code";
+        await saveFilesAsZip([
+          { name: base + ".html", content: webHtml },
+          { name: base + ".css", content: webCss },
+          { name: base + ".js", content: webJs },
+        ]);
+      }
+    } else {
+      let name = saveFileName || getSuggestedFilename(language);
+      const ext = getSuggestedFilename(language).split(".").pop();
+      if (ext && !name.endsWith("." + ext)) name += "." + ext;
+      saveCodeToFile(code, name);
+    }
+    setSaveDialogOpen(false);
+  };
+
+  const handleFullscreen = () => {
+    if (previewRef.current) {
+      if (previewRef.current.requestFullscreen) {
+        previewRef.current.requestFullscreen();
+      } else if ((previewRef.current as any).webkitRequestFullscreen) {
+        (previewRef.current as any).webkitRequestFullscreen();
+      } else if ((previewRef.current as any).msRequestFullscreen) {
+        (previewRef.current as any).msRequestFullscreen();
+      }
+    }
   };
 
   return (
@@ -516,6 +616,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Language:
           </label>{" "}
+          {/* Show selected language icon */}
+          <TechIcon lang={language} size={20} className="mr-1" />
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
@@ -525,7 +627,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           >
             {languages.map((lang) => (
               <option key={lang.id} value={lang.id}>
-                {getLanguageIcon(lang.id)} {lang.name}
+                {lang.name}
               </option>
             ))}
           </select>
@@ -569,7 +671,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
               className="px-3 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
               title="Format code"
             >
-              ✨ Format
+              Format
             </button>
           )}
 
@@ -578,7 +680,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             className="px-3 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
             title="Save code to file"
           >
-            💾 Save
+            Save
           </button>
 
           <button
@@ -590,48 +692,259 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
                 : "bg-green-500 hover:bg-green-600 text-white"
             }`}
           >
-            {isExecuting ? "⏳ Running..." : "▶️ Run"}
+            {isExecuting ? "Running..." : "Run"}
           </button>
         </div>
       </div>
 
       {/* Editor */}
       <div className="relative">
-        <MonacoEditor
-          width="100%"
-          height="500px"
-          language={getMonacoLanguage(language)}
-          theme={isDarkMode ? "vs-dark" : "vs-light"}
-          value={code}
-          onChange={setCode}
-          options={{
-            fontSize: fontSize,
-            lineNumbers: showLineNumbers ? "on" : "off",
-            wordWrap: "on",
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            tabSize: 2,
-            insertSpaces: true,
-            renderWhitespace: "boundary",
-            folding: true,
-            lineDecorationsWidth: 10,
-            lineNumbersMinChars: 3,
-            glyphMargin: false,
-            contextmenu: true,
-            mouseWheelZoom: true,
-            smoothScrolling: true,
-            cursorBlinking: "smooth",
-            cursorSmoothCaretAnimation: "on",
-            selectOnLineNumbers: true,
-            roundedSelection: false,
-            readOnly: false,
-            cursorStyle: "line",
-            fontFamily:
-              "'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
-          }}
-        />
+        {language === "web" ? (
+          <>
+            {/* File select buttons for web editor */}
+            <div className="flex gap-2 mb-2">
+              <button
+                className={`px-3 py-1 rounded-t-md border-b-2 font-semibold transition-colors
+                  ${
+                    webActiveFile === "html"
+                      ? "border-blue-500 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                      : "border-transparent bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  }
+                `}
+                onClick={() => setWebActiveFile("html")}
+              >
+                HTML
+              </button>
+              <button
+                className={`px-3 py-1 rounded-t-md border-b-2 font-semibold transition-colors
+                  ${
+                    webActiveFile === "css"
+                      ? "border-blue-500 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                      : "border-transparent bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  }
+                `}
+                onClick={() => setWebActiveFile("css")}
+              >
+                CSS
+              </button>
+              <button
+                className={`px-3 py-1 rounded-t-md border-b-2 font-semibold transition-colors
+                  ${
+                    webActiveFile === "js"
+                      ? "border-blue-500 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                      : "border-transparent bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  }
+                `}
+                onClick={() => setWebActiveFile("js")}
+              >
+                JS
+              </button>
+            </div>
+            {/* Show only the selected file's editor */}
+            {webActiveFile === "html" && (
+              <div>
+                <div className="font-semibold mb-1">HTML</div>
+                <MonacoEditor
+                  width="100%"
+                  height="450px"
+                  language="html"
+                  theme={isDarkMode ? "vs-dark" : "vs-light"}
+                  value={webHtml}
+                  onChange={setWebHtml}
+                  options={{
+                    fontSize,
+                    minimap: { enabled: false },
+                    wordWrap: "on",
+                  }}
+                />
+              </div>
+            )}
+            {webActiveFile === "css" && (
+              <div>
+                <div className="font-semibold mb-1">CSS</div>
+                <MonacoEditor
+                  width="100%"
+                  height="450px"
+                  language="css"
+                  theme={isDarkMode ? "vs-dark" : "vs-light"}
+                  value={webCss}
+                  onChange={setWebCss}
+                  options={{
+                    fontSize,
+                    minimap: { enabled: false },
+                    wordWrap: "on",
+                  }}
+                />
+              </div>
+            )}
+            {webActiveFile === "js" && (
+              <div>
+                <div className="font-semibold mb-1">JavaScript</div>
+                <MonacoEditor
+                  width="100%"
+                  height="450px"
+                  language="javascript"
+                  theme={isDarkMode ? "vs-dark" : "vs-light"}
+                  value={webJs}
+                  onChange={setWebJs}
+                  options={{
+                    fontSize,
+                    minimap: { enabled: false },
+                    wordWrap: "on",
+                  }}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <MonacoEditor
+            width="100%"
+            height="450px"
+            language={getMonacoLanguage(language)}
+            theme={isDarkMode ? "vs-dark" : "vs-light"}
+            value={code}
+            onChange={setCode}
+            options={{
+              fontSize: fontSize,
+              lineNumbers: showLineNumbers ? "on" : "off",
+              wordWrap: "on",
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              tabSize: 2,
+              insertSpaces: true,
+              renderWhitespace: "boundary",
+              folding: true,
+              lineDecorationsWidth: 10,
+              lineNumbersMinChars: 3,
+              glyphMargin: false,
+              contextmenu: true,
+              mouseWheelZoom: true,
+              smoothScrolling: true,
+              cursorBlinking: "smooth",
+              cursorSmoothCaretAnimation: "on",
+              selectOnLineNumbers: true,
+              roundedSelection: false,
+              readOnly: false,
+              cursorStyle: "line",
+              fontFamily:
+                "'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+            }}
+          />
+        )}
       </div>
+
+      {/* Output or Live Preview */}
+      {language === "web" ? (
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-semibold text-gray-700 dark:text-gray-200">
+              Live Preview
+            </span>
+            <button
+              onClick={handleFullscreen}
+              className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              Fullscreen
+            </button>
+          </div>
+          <iframe
+            ref={previewRef}
+            srcDoc={webPreview}
+            title="Web Live Preview"
+            className="w-full h-[400px] border rounded-lg bg-white dark:bg-gray-900"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        </div>
+      ) : (
+        output && (
+          <div className="bg-gray-100 dark:bg-gray-700 rounded-lg shadow-inner p-4 mt-2 max-h-60 overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 ">
+              Output
+            </h3>
+            <pre className="p-2 rounded-md text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap overflow-x-auto">
+              {output}
+            </pre>
+          </div>
+        )
+      )}
+
+      {/* Save dialog/modal */}
+      {saveDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-xs">
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
+              Save Code
+            </h3>
+            {language === "web" ? (
+              <>
+                <div className="mb-2">
+                  <label className="block text-sm mb-1">
+                    What do you want to save?
+                  </label>
+                  <select
+                    className="w-full p-2 rounded border dark:bg-gray-700 dark:text-gray-100"
+                    value={saveTarget}
+                    onChange={(e) => setSaveTarget(e.target.value)}
+                  >
+                    <option value="">Select file(s)</option>
+                    <option value="html">HTML only</option>
+                    <option value="css">CSS only</option>
+                    <option value="js">JS only</option>
+                    <option value="zip">All as ZIP</option>
+                  </select>
+                </div>
+                <div className="mb-2">
+                  <label className="block text-sm mb-1">
+                    File name (no extension for ZIP):
+                  </label>
+                  <input
+                    className="w-full p-2 rounded border dark:bg-gray-700 dark:text-gray-100"
+                    value={saveFileName}
+                    onChange={(e) => setSaveFileName(e.target.value)}
+                    placeholder={
+                      saveTarget === "zip"
+                        ? "web-code"
+                        : saveTarget === "html"
+                          ? "index.html"
+                          : saveTarget === "css"
+                            ? "style.css"
+                            : saveTarget === "js"
+                              ? "script.js"
+                              : ""
+                    }
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="mb-2">
+                <label className="block text-sm mb-1">File name:</label>
+                <input
+                  className="w-full p-2 rounded border dark:bg-gray-700 dark:text-gray-100"
+                  value={saveFileName}
+                  onChange={(e) => setSaveFileName(e.target.value)}
+                  placeholder={getSuggestedFilename(language)}
+                />
+              </div>
+            )}
+            <div className="flex gap-2 mt-4">
+              <button
+                className="flex-1 px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600"
+                onClick={handleSaveConfirm}
+                disabled={language === "web" && !saveTarget}
+              >
+                Save
+              </button>
+              <button
+                className="flex-1 px-3 py-1 rounded bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-400 dark:hover:bg-gray-500"
+                onClick={() => setSaveDialogOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

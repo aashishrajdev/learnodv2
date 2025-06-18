@@ -8,4 +8,5 @@ export const languages = [
   { id: "php", name: "PHP", executable: true },
   { id: "go", name: "Go", executable: true },
   { id: "rust", name: "Rust", executable: true },
+  { id: "web", name: "Web (HTML/CSS/JS)", executable: true },
 ];
