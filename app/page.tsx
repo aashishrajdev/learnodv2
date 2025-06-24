@@ -73,9 +73,13 @@ export default function Home() {
                 {" "}
                 seamless controls
               </span>
-              , write code, and execute it instantly. Ask any doubt to{" "}
-              <span className="text-blue-600 dark:text-blue-300 font-semibold">
-                Gemini AI with full access to your video and code
+              , write code, and execute it instantly. <br />
+              <span className=" text-blue-600 dark:text-blue-300 font-semibold">
+                With{" "}
+                <span className="text-3xl text-blue-600 dark:text-blue-300 font-semibold">
+                  AI
+                </span>{" "}
+                feature
               </span>{" "}
               for contextual explanations.
               <br />
