@@ -1,4 +1,5 @@
 import Link from "next/link";
+import React from "react";
 import {
   FaPlay,
   FaRobot,
@@ -57,7 +58,7 @@ export default function About() {
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
               Key Features
-            </h2>
+            </h2>{" "}
             <ul className="space-y-3 text-gray-600 dark:text-gray-300">
               <li className="flex items-center">
                 <FaYoutube className="text-green-500 mr-3 text-lg" />

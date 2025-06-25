@@ -22,6 +22,6 @@
       }
     ]
   },
-  "include": ["app", "components", ".next/types/**/*.ts"],
+  "include": ["app", "components", "types", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
